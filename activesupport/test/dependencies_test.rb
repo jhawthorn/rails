@@ -388,6 +388,25 @@ class DependenciesTest < ActiveSupport::TestCase
     $:.replace(original_path)
   end
 
+  def test_doesnt_break_normal_require_with_namespaced
+    path = File.expand_path("autoloading_fixtures/load_path", __dir__)
+    original_path = $:.dup
+    $:.push(path)
+    with_autoloading_fixtures do
+      # The _ = assignments are to prevent warnings
+      _ = Namespaced::RequiresConstant
+      assert defined?(Namespaced::RequiresConstant)
+      assert defined?(Namespaced::LoadedConstant)
+      ActiveSupport::Dependencies.clear
+      _ = Namespaced::RequiresConstant
+      assert defined?(Namespaced::RequiresConstant)
+      assert defined?(Namespaced::LoadedConstant) # Fails because wrongly considered autoloaded
+    end
+  ensure
+    remove_constants(:Namespaced)
+    $:.replace(original_path)
+  end
+
   def test_require_returns_true_when_file_not_yet_required
     path = File.expand_path("autoloading_fixtures/load_path", __dir__)
     original_path = $:.dup
