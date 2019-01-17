@@ -1,3 +1,22 @@
+*   Allow applications to automatically switch connections.
+
+    Adds a middleware that can be inserted into your applcation that will
+    automatically switch database connections based on the request type.
+
+    `GET` and `HEAD` requests will read from the replica unless there was
+    a write in the last 5 seconds, otherwise they will read from the primary.
+    Non-get requests will always write to the primary. The middleware accepts
+    an argument for a Resolver class and a Operations class where you are able
+    to change how the auto-switcher works to be most beneficial for your
+    application.
+
+    It is not recommended to use the auto-switcher out of the box without
+    understanding or testing your replication strategy. The implementation is
+    meant to be a guide that provides an easy-to-understand API for automatically
+    switching database connections.
+
+    *Eileen M. Uchitelle*
+
 *   Make `t.timestamps` with precision by default.
 
     *Ryuta Kamizono*
