@@ -18,16 +18,16 @@ module ActiveRecord
       class Resolver # :nodoc:
         SEND_TO_REPLICA_WAIT_TIME = 5.seconds
 
-        def self.call(resolver)
-          new(resolver)
+        def self.call(context)
+          new(context)
         end
 
-        def initialize(resolver)
-          @resolver = resolver
+        def initialize(context)
+          @context = context
           @instrumenter = ActiveSupport::Notifications.instrumenter
         end
 
-        attr_reader :resolver, :instrumenter
+        attr_reader :context, :instrumenter
 
         def read(&blk)
           if read_from_primary?
@@ -67,7 +67,7 @@ module ActiveRecord
                 begin
                   ret = yield
                 ensure
-                  resolver.update_last_write_timestamp
+                  context.update_last_write_timestamp
                 end
                 ret
               end
@@ -83,7 +83,7 @@ module ActiveRecord
           end
 
           def time_since_last_write_ok?
-            Time.now - resolver.last_write_timestamp >= send_to_replica_wait_time
+            Time.now - context.last_write_timestamp >= send_to_replica_wait_time
           end
       end
     end
