@@ -331,6 +331,10 @@ module ActionView
 
   # An Optimized resolver for Rails' most common case.
   class OptimizedFileSystemResolver < FileSystemResolver #:nodoc:
+    def initialize(path)
+      super(path)
+    end
+
     private
 
       def find_template_paths_from_details(path, details)
