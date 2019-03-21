@@ -333,23 +333,48 @@ module ActionView
   class OptimizedFileSystemResolver < FileSystemResolver #:nodoc:
     def initialize(path)
       super(path)
+      scan_files
+    end
+
+    def clear_cache
+      super()
+      scan_files
     end
 
     private
 
-      def find_template_paths_from_details(path, details)
-        # Instead of checking for every possible path, as our other globs would
-        # do, scan the directory for files with the right prefix.
-        query = "#{escape_entry(File.join(@path, path))}*"
+      def scan_files
+        # List all files within the view directory
+        files = Dir[File.join(@path, "**", "*")]
+        files.reject! { |f| File.directory?(f) }
 
+        # Remove the path prefix
+        files.map! { |f| f[(@path.size + 1)..(f.length)] }
+
+        # Group by their prefix name
+        files = files.group_by { |f| File.dirname(f) }
+        files[""] = files.delete(".")
+
+        # Remove prefix from filenames
+        files.map do |dirname, filenames|
+          next if dirname == ""
+
+          filenames.map! do |f|
+            f[(dirname.size + 1)..(f.size)]
+          end
+        end
+
+        @files = files
+      end
+
+      def find_template_paths_from_details(path, details)
         regex = build_regex(path, details)
 
-        Dir[query].uniq.reject do |filename|
+        @files.fetch(path.prefix, []).reject do |filename|
           # This regex match does double duty of finding only files which match
           # details (instead of just matching the prefix) and also filtering for
           # case-insensitive file systems.
-          !regex.match?(filename) ||
-            File.directory?(filename)
+          !regex.match?(filename)
         end.sort_by do |filename|
           # Because we scanned the directory, instead of checking for files
           # one-by-one, they will be returned in an arbitrary order.
@@ -367,11 +392,13 @@ module ActionView
               details[ext].index(found)
             end
           end
+        end.map do |filename|
+          File.join(@path, path.prefix, filename)
         end
       end
 
       def build_regex(path, details)
-        query = escape_entry(File.join(@path, path))
+        query = Regexp.escape(File.basename(path))
         exts = EXTENSIONS.map do |ext, prefix|
           match =
             if ext == :variants && details[ext] == :any
