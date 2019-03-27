@@ -60,11 +60,13 @@ class MimeControllerLayoutsTest < ActionController::TestCase
     super
     @request.host = "www.example.com"
     Mime::Type.register_alias("text/html", :iphone)
+    ActionView::LookupContext::DetailsKey.clear
   end
 
   def teardown
     super
     Mime::Type.unregister(:iphone)
+    ActionView::LookupContext::DetailsKey.clear
   end
 
   def test_missing_layout_renders_properly
