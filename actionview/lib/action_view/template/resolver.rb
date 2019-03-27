@@ -327,6 +327,24 @@ module ActionView
   class OptimizedFileSystemResolver < FileSystemResolver #:nodoc:
     def initialize(path)
       super(path)
+      scan_files
+    end
+
+    def scan_files
+      files = Dir["**/*", base: @path]
+      files.reject! { |f| File.directory?(File.join(@path, f)) }
+      files.map! do |filename|
+        [filename, parse_template_path(filename)]
+      end
+      @files_by_path =
+        files.group_by do |_, path_details|
+          Path.build(path_details[:action], path_details[:prefix], path_details[:partial]).to_s
+        end
+    end
+
+    def clear_cache
+      super()
+      scan_files
     end
 
     private
@@ -343,18 +361,9 @@ module ActionView
 
         # Instead of checking for every possible path, as our other globs would
         # do, scan the directory for files with the right prefix.
-        candidates = Dir["#{escape_entry(path.to_s)}*", base: @path]
+        candidates = @files_by_path[path.to_s] || []
 
-        candidates.uniq.reject do |filename|
-          File.directory?(File.join(@path, filename))
-        end.map do |filename|
-          [filename, parse_template_path(filename)]
-        end.select do |(filename, path_details)|
-          found_path =
-            Path.build(path_details[:action], path_details[:prefix], path_details[:partial]).to_s
-
-          path.to_s == found_path
-        end.map do |(filename, path_details)|
+        candidates.map do |(filename, path_details)|
           # Because we scanned the directory, instead of checking for files
           # one-by-one, they will be returned in an arbitrary order.
           # We can use the matches found by the regex and sort by their index in
