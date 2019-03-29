@@ -186,7 +186,7 @@ module ActionView
 
       def query(path, details, formats, outside_app_allowed, locals)
         template_paths = find_template_paths_from_details(path, details)
-        template_paths = reject_files_external_to_app(template_paths) unless outside_app_allowed
+        template_paths = reject_files_external_to_app(template_paths)
 
         template_paths.map do |template|
           build_template(template, path.virtual, locals)
