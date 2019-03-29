@@ -369,5 +369,9 @@ module ActionView
     def build_template(template, virtual_path, locals)
       super(template, nil, locals)
     end
+
+    def reject_files_external_to_app(files)
+      files
+    end
   end
 end
