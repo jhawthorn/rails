@@ -256,25 +256,51 @@ module ActionView
       # from the path, or the handler, we should return the array of formats given
       # to the resolver.
       def extract_handler_and_format_and_variant(path)
-        pieces = File.basename(path).split(".")
-        pieces.shift
+        details = parse_template_path(path)
 
-        extension = pieces.pop
-
-        handler = Template.handler_for_extension(extension)
-        format, variant = pieces.last.split(EXTENSIONS[:variants], 2) if pieces.last
-        format = if format
-          Template::Types[format]&.ref
-        else
-          if handler.respond_to?(:default_format) # default_format can return nil
-            handler.default_format
-          else
-            nil
-          end
+        handler = Template.handler_for_extension(details[:handler])
+        format = details[:format]
+        if !format && handler.respond_to?(:default_format)
+          format = handler.default_format
         end
+        [
+          handler,
+          format,
+          details[:variant]
+        ]
+      end
 
-        # Template::Types[format] and handler.default_format can return nil
-        [handler, format, variant]
+      def path_regex
+        handlers = Template::Handlers.extensions.map { |x| Regexp.escape(x) }.join("|")
+        formats = Template::Types.symbols.map { |x| Regexp.escape(x) }.join("|")
+        locales = "[a-z]{2}(?:-[A-Z]{2})?"
+        variants = "[^.]*"
+        %r{
+          \A
+          (?:(?<prefix>.*)/)?
+          (?<partial>_)?
+          (?<action>.*?)
+          (?:\.(?<locale>#{locales}))??
+          (?:\.(?<format>#{formats}))??
+          (?:\+(?<variant>#{variants}))??
+          (?:\.(?<handler>#{handlers}))?
+          \z
+        }x
+      end
+
+      def parse_template_path(path)
+        match = path_regex.match(path)
+
+        {
+          full_path: path,
+          prefix: match[:prefix] || "",
+          action: match[:action],
+          partial: !!match[:partial],
+          locale: match[:locale]&.to_sym,
+          handler: match[:handler]&.to_sym,
+          format: match[:format]&.to_sym,
+          variant: match[:variant]
+        }
       end
   end
 
