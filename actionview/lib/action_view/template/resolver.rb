@@ -360,6 +360,8 @@ module ActionView
   # The same as FileSystemResolver but does not allow templates to store
   # a virtual path since it is invalid for such resolvers.
   class FallbackFileSystemResolver < FileSystemResolver #:nodoc:
+    private_class_method :new
+
     def self.instances
       [new(""), new("/")]
     end
