@@ -48,9 +48,8 @@ module ActionView #:nodoc:
       find_all(*args).first || raise(MissingTemplate.new(self, *args))
     end
 
-    def find_file(path, prefixes = [], *args)
-      _find_all(path, prefixes, args).first || raise(MissingTemplate.new(self, path, prefixes, *args))
-    end
+    alias :find_file :find
+    deprecate :find_file
 
     def find_all(path, prefixes = [], *args)
       _find_all path, prefixes, args
