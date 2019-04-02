@@ -118,7 +118,7 @@ module ActionView
       locals = locals.map(&:to_s).sort!.freeze
 
       cached(key, [name, prefix, partial], details, locals) do
-        find_templates(name, prefix, partial, details, false, locals)
+        find_templates(name, prefix, partial, details, locals)
       end
     end
 
@@ -126,7 +126,7 @@ module ActionView
       locals = locals.map(&:to_s).sort!.freeze
 
       cached(key, [name, prefix, partial], details, locals) do
-        find_templates(name, prefix, partial, details, true, locals)
+        find_templates(name, prefix, partial, details, locals)
       end
     end
 
@@ -141,8 +141,8 @@ module ActionView
     # This is what child classes implement. No defaults are needed
     # because Resolver guarantees that the arguments are present and
     # normalized.
-    def find_templates(name, prefix, partial, details, outside_app_allowed = false, locals = [])
-      raise NotImplementedError, "Subclasses must implement a find_templates(name, prefix, partial, details, outside_app_allowed = false, locals = []) method"
+    def find_templates(name, prefix, partial, details, locals = [])
+      raise NotImplementedError, "Subclasses must implement a find_templates(name, prefix, partial, details, locals = []) method"
     end
 
     # Handles templates caching. If a key is given and caching is on
@@ -179,12 +179,12 @@ module ActionView
 
     private
 
-      def find_templates(name, prefix, partial, details, outside_app_allowed = false, locals)
+      def find_templates(name, prefix, partial, details, locals)
         path = Path.build(name, prefix, partial)
-        query(path, details, details[:formats], outside_app_allowed, locals)
+        query(path, details, details[:formats], locals)
       end
 
-      def query(path, details, formats, outside_app_allowed, locals)
+      def query(path, details, formats, locals)
         template_paths = find_template_paths_from_details(path, details)
         template_paths = reject_files_external_to_app(template_paths)
 
