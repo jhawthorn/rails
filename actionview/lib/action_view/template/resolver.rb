@@ -122,13 +122,8 @@ module ActionView
       end
     end
 
-    def find_all_anywhere(name, prefix, partial = false, details = {}, key = nil, locals = [])
-      locals = locals.map(&:to_s).sort!.freeze
-
-      cached(key, [name, prefix, partial], details, locals) do
-        find_templates(name, prefix, partial, details, locals)
-      end
-    end
+    alias :find_all_anywhere :find_all
+    deprecate :find_all_anywhere
 
     def find_all_with_query(query) # :nodoc:
       @cache.cache_query(query) { find_template_paths(File.join(@path, query)) }
