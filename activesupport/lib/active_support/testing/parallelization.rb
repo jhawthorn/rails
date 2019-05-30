@@ -55,7 +55,8 @@ module ActiveSupport
         @queue      = Server.new
         @pool       = []
 
-        @url = DRb.start_service("drbunix:", @queue).uri
+        @drb = DRb::DRbServer.new("drbunix:", @queue)
+        @url = @drb.uri
       end
 
       def after_fork(worker)
@@ -73,7 +74,8 @@ module ActiveSupport
       def start
         @pool = @queue_size.times.map do |worker|
           fork do
-            DRb.stop_service
+            @drb.stop_service
+            @drb = nil
 
             begin
               after_fork(worker)
