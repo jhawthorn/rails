@@ -55,8 +55,20 @@ module ActiveSupport
         @queue      = Server.new
         @pool       = []
 
-        @drb = DRb::DRbServer.new("drbunix:", @queue)
-        @url = @drb.uri
+        if ENV["PARALLEL_SERVER"]
+          @drb = DRb::DRbServer.new("druby://127.0.0.1:8787", @queue)
+          @url = @drb.uri
+          @queue_size = 0
+          puts "Started server on #{@url}"
+        elsif ENV["PARALLEL_WORKER"]
+          #@drb = DRb::DRbServer.new("druby://127.0.0.1:8787", @queue)
+          @url = "druby://127.0.0.1:8787"
+          @queue = nil
+          p @url
+        else
+          @drb = DRb::DRbServer.new("drbunix:", @queue)
+          @url = @drb.uri
+        end
       end
 
       def after_fork(worker)
@@ -72,6 +84,10 @@ module ActiveSupport
       end
 
       def start
+        if ENV["PARALLEL_WORKER"]
+          run_worker
+          Kernel.exit 0
+        end
         @pool = @queue_size.times.map do |worker|
           fork do
             @drb.stop_service
@@ -81,39 +97,49 @@ module ActiveSupport
               after_fork(worker)
             rescue => setup_exception; end
 
-            queue = DRbObject.new_with_uri(@url)
+            run_worker(setup_exception: setup_exception)
 
-            while job = queue.pop
-              klass    = job[0]
-              method   = job[1]
-              reporter = job[2]
-              result = klass.with_info_handler reporter do
-                Minitest.run_one_method(klass, method)
-              end
-
-              add_setup_exception(result, setup_exception) if setup_exception
-
-              begin
-                queue.record(reporter, result)
-              rescue DRb::DRbConnError
-                result.failures.each do |failure|
-                  failure.exception = DRb::DRbRemoteError.new(failure.exception)
-                end
-                queue.record(reporter, result)
-              end
-            end
           ensure
             run_cleanup(worker)
           end
         end
       end
 
+      def run_worker(setup_exception: nil)
+        puts "Connecting to #{@url}"
+        queue = DRbObject.new_with_uri(@url)
+
+        while job = queue.pop
+          klass    = job[0]
+          method   = job[1]
+          reporter = job[2]
+          result = klass.with_info_handler reporter do
+            Minitest.run_one_method(klass, method)
+          end
+
+          add_setup_exception(result, setup_exception) if setup_exception
+
+          begin
+            queue.record(reporter, result)
+          rescue DRb::DRbConnError
+            result.failures.each do |failure|
+              failure.exception = DRb::DRbRemoteError.new(failure.exception)
+            end
+            queue.record(reporter, result)
+          end
+        end
+      end
+
       def <<(work)
+        return if ENV["PARALLEL_WORKER"]
         @queue << work
       end
 
       def shutdown
-        @queue_size.times { @queue << nil }
+        1.times { @queue << nil }
+        while @queue.length > 0
+          sleep 0.1
+        end
         @pool.each { |pid| Process.waitpid pid }
 
         if @queue.length > 0
