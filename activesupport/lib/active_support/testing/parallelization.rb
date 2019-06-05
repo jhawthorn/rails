@@ -10,8 +10,11 @@ module ActiveSupport
       class Server
         include DRb::DRbUndumped
 
+        attr_reader :worker_count
+
         def initialize
           @queue = Queue.new
+          @worker_count = 0
         end
 
         def record(reporter, result)
@@ -29,6 +32,14 @@ module ActiveSupport
 
         def length
           @queue.length
+        end
+
+        def start_worker
+          @worker_count += 1
+        end
+
+        def finish_worker
+          @worker_count -= 1
         end
 
         def pop; @queue.pop; end
@@ -109,6 +120,7 @@ module ActiveSupport
         puts "Connecting to #{@url}"
         queue = DRbObject.new_with_uri(@url)
 
+        queue.start_worker
         while job = queue.pop
           klass    = job[0]
           method   = job[1]
@@ -128,6 +140,10 @@ module ActiveSupport
             queue.record(reporter, result)
           end
         end
+
+        queue.finish_worker
+
+        Kernel.exit 0
       end
 
       def <<(work)
@@ -136,11 +152,17 @@ module ActiveSupport
       end
 
       def shutdown
-        1.times { @queue << nil }
         while @queue.length > 0
           sleep 0.1
         end
-        @pool.each { |pid| Process.waitpid pid }
+
+        @queue.worker_count.times { @queue << nil }
+
+        # Wait for workers to exit
+        300.times do
+          break if @queue.length == 0
+          sleep 0.1
+        end
 
         if @queue.length > 0
           raise "Queue not empty, but all workers have finished. This probably means that a worker crashed and #{@queue.length} tests were missed."
