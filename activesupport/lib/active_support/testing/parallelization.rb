@@ -34,6 +34,41 @@ module ActiveSupport
         def pop; @queue.pop; end
       end
 
+      class QueueBuffer
+        def initialize(server, size = 1)
+          @job_sem = Concurrent::Semaphore.new(size)
+          @job_queue = Queue.new
+          @record_queue = Queue.new
+          @server = server
+
+          Thread.new do
+            loop do
+              @job_sem.acquire
+              job = @server.pop
+              @job_queue << job
+              break unless job
+            end
+          end
+
+          Thread.new do
+            loop do
+              reporter, result = @record_queue.pop
+              @server.record(reporter, result)
+            end
+          end
+        end
+
+        def pop
+          result = @job_queue.pop
+          @job_sem.release
+          result
+        end
+
+        def record(reporter, result)
+          @record_queue << [reporter, result]
+        end
+      end
+
       @@after_fork_hooks = []
 
       def self.after_fork_hook(&blk)
@@ -84,6 +119,7 @@ module ActiveSupport
             rescue => setup_exception; end
 
             queue = DRbObject.new_with_uri(@url)
+            queue = QueueBuffer.new(queue)
 
             while job = queue.pop
               klass    = job[0]
