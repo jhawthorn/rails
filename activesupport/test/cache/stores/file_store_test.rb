@@ -7,6 +7,7 @@ require "pathname"
 
 class FileStoreTest < ActiveSupport::TestCase
   def setup
+    @cache_dir = Dir.mktmpdir("file-store-")
     Dir.mkdir(cache_dir) unless File.exist?(cache_dir)
     @cache = ActiveSupport::Cache.lookup_store(:file_store, cache_dir, expires_in: 60)
     @peek = ActiveSupport::Cache.lookup_store(:file_store, cache_dir, expires_in: 60)
@@ -22,7 +23,7 @@ class FileStoreTest < ActiveSupport::TestCase
   end
 
   def cache_dir
-    File.join(Dir.pwd, "tmp_cache")
+    @cache_dir
   end
 
   include CacheStoreBehavior
