@@ -216,18 +216,18 @@ module ActiveSupport::Cache::RedisCacheStoreTests
 
   # Separate test class so we can omit the namespace which causes expected,
   # appropriate complaints about incompatible string encodings.
-  class KeyEncodingSafetyTest < ActiveSupport::TestCase
+  class KeyEncodingSafetyTest < StoreTest
     include EncodedKeyCacheBehavior
 
-    setup do
-      @namespace = "test-#{SecureRandom.hex}"
-      @cache = ActiveSupport::Cache::RedisCacheStore.new(timeout: 0.1, driver: DRIVER)
-      @cache.logger = nil
-    end
+    #setup do
+    #  @namespace = "test-#{SecureRandom.hex}"
+    #  @cache = ActiveSupport::Cache::RedisCacheStore.new(timeout: 0.1, driver: DRIVER)
+    #  @cache.logger = nil
+    #end
 
-    teardown do
-      @cache.redis.disconnect!
-    end
+    #teardown do
+    #  @cache.redis.disconnect!
+    #end
   end
 
   class StoreAPITest < StoreTest

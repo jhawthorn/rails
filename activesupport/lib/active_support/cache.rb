@@ -638,6 +638,10 @@ module ActiveSupport
             namespace = namespace.call
           end
 
+          unless key.encoding == Encoding::UTF_8
+            key = key.dup.force_encoding(Encoding::UTF_8)
+          end
+
           if namespace
             "#{namespace}:#{key}"
           else
