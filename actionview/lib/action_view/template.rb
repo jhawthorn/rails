@@ -322,7 +322,7 @@ module ActionView
         end
 
         locals_code = [
-          "_locals = local_assigns.merge(local_assigns: local_assigns, output_buffer: output_buffer)",
+          "_locals = local_assigns",
           "local_assigns.each{|k,v| instance_variable_set(k,v) if k.to_s.start_with?('@') }"
         ].join(";")
 
