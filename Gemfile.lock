@@ -15,6 +15,11 @@ GIT
       websocket
 
 PATH
+  remote: ../dynamic_locals
+  specs:
+    dynamic_locals (0.1.0)
+
+PATH
   remote: .
   specs:
     actioncable (6.1.0.alpha)
@@ -552,6 +557,7 @@ DEPENDENCIES
   dalli
   delayed_job
   delayed_job_active_record
+  dynamic_locals!
   google-cloud-storage (~> 1.11)
   hiredis
   image_processing (~> 1.2)
