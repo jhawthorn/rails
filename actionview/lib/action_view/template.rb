@@ -5,6 +5,7 @@ require "active_support/core_ext/kernel/singleton_class"
 require "active_support/deprecation"
 require "thread"
 require "delegate"
+require "dynamic_locals"
 
 module ActionView
   # = Action View Template
@@ -312,11 +313,21 @@ module ActionView
       # regardless of the original source encoding.
       def compile(mod)
         source = encode!
+        original_source = source
+
         code = @handler.call(self, source)
+
+        handle_syntax_error(original_source) do
+          code = DynamicLocals.translate(code, locals_hash: :_locals)
+        end
+
+        locals_code = [
+          "_locals = local_assigns.merge(local_assigns: local_assigns, output_buffer: output_buffer)",
+          "local_assigns.each{|k,v| instance_variable_set(k,v) if k.to_s.start_with?('@') }"
+        ].join(";")
 
         # Make sure that the resulting String to be eval'd is in the
         # encoding of the code
-        original_source = source
         source = +<<-end_src
           def #{method_name}(local_assigns, output_buffer)
             @virtual_path = #{@virtual_path.inspect};#{locals_code};#{code}
@@ -337,14 +348,18 @@ module ActionView
           raise WrongEncodingError.new(source, Encoding.default_internal)
         end
 
-        begin
+        handle_syntax_error(original_source) do
           mod.module_eval(source, identifier, 0)
-        rescue SyntaxError
-          # Account for when code in the template is not syntactically valid; e.g. if we're using
-          # ERB and the user writes <%= foo( %>, attempting to call a helper `foo` and interpolate
-          # the result into the template, but missing an end parenthesis.
-          raise SyntaxErrorInTemplate.new(self, original_source)
         end
+      end
+
+      def handle_syntax_error(original_source)
+        yield
+      rescue SyntaxError
+        # Account for when code in the template is not syntactically valid; e.g. if we're using
+        # ERB and the user writes <%= foo( %>, attempting to call a helper `foo` and interpolate
+        # the result into the template, but missing an end parenthesis.
+        raise SyntaxErrorInTemplate.new(self, original_source)
       end
 
       def handle_render_error(view, e)
