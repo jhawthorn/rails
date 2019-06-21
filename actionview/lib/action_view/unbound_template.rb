@@ -10,11 +10,11 @@ module ActionView
       @handler = handler
       @options = options
 
-      @templates = Concurrent::Map.new(initial_capacity: 2)
+      @template = build_template([])
     end
 
     def bind_locals(locals)
-      @templates[locals] ||= build_template(locals)
+      @template
     end
 
     private
