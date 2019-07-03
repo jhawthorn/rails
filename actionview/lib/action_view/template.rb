@@ -318,11 +318,11 @@ module ActionView
         code = @handler.call(self, source)
 
         handle_syntax_error(original_source) do
-          code = DynamicLocals.translate(code, locals_hash: :_locals)
+          known_locals = [:local_assigns, :output_buffer]
+          code = DynamicLocals.translate(code, locals_hash: :local_assigns, known_locals: known_locals)
         end
 
         locals_code = [
-          "_locals = local_assigns",
           "local_assigns.each{|k,v| instance_variable_set(k,v) if k.to_s.start_with?('@') }"
         ].join(";")
 
