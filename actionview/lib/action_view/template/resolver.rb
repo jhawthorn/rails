@@ -350,6 +350,12 @@ module ActionView
 
     private
       def find_template_paths_from_details(path, details)
+        if path.name.include?(".")
+          ActiveSupport::Deprecation.warn("Rendering actions with '.' in the name is deprecated: #{path}")
+          # Fall back to the unoptimized resolver
+          return super
+        end
+
         # Instead of checking for every possible path, as our other globs would
         # do, scan the directory for files with the right prefix.
         query = "#{escape_entry(File.join(@path, path))}*"
@@ -367,7 +373,21 @@ module ActionView
           # one-by-one, they will be returned in an arbitrary order.
           # We can use the matches found by the regex and sort by their index in
           # details.
-          match = filename.match(regex)
+          match = filename.match(regex).named_captures.symbolize_keys
+          match2 = @path_parser.parse(filename)
+          match2 = {
+            locale: match2[:locale]&.to_s,
+            formats: match2[:format]&.to_s,
+            variants: match2[:variant],
+            handlers: match2[:handler]&.to_s,
+          }
+          #match2 = match2.slice(:prefix)
+
+          if match != match2
+            pp filename: filename, regex: regex, match: match, match2: match2
+            raise "match didn't work"
+          end
+
           EXTENSIONS.keys.map do |ext|
             if ext == :variants && details[ext] == :any
               match[ext].nil? ? 0 : 1

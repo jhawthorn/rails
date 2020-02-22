@@ -208,6 +208,13 @@ module ResolverSharedTests
     assert_equal "mobile", templates[0].variant
   end
 
+  def test_render_with_dot_in_action
+    with_file "test/hello_world.html.erb", "Hello html!"
+
+    template = context.find("hello_world.html", "test", false, [], {})
+    assert_equal "test/hello_world.html", template.virtual_path
+  end
+
   def test_virtual_path_is_preserved_with_dot
     with_file "test/hello_world.html.erb", "Hello html!"
 
