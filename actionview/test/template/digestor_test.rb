@@ -340,7 +340,7 @@ class TemplateDigestorTest < ActionView::TestCase
       options = options.dup
       finder_options = options.extract!(:variants, :format)
 
-      finder.variants = finder_options[:variants] || []
+      finder.variants = finder_options[:variants] || nil
 
       finder_with_formats = if finder_options[:format]
         finder.with_prepended_formats(Array(finder_options[:format]))

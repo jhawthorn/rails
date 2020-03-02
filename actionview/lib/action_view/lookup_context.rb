@@ -32,6 +32,9 @@ module ActionView
         end
 
         def #{name}=(value)
+          if value && !value.present?
+            ActiveSupport::Deprecation.warn "Assigning blank value \#{value.inspect} to #{name} is deprecated. Use nil instead"
+          end
           value = value.present? ? Array(value) : default_#{name}
           _set_detail(:#{name}, value) if value != @details[:#{name}]
         end
