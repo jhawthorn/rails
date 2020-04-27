@@ -204,6 +204,10 @@ module Rails
       end
     end
 
+    def controller_resolver
+      @controller_resolver ||= ActionController::ControllerResolver.new
+    end
+
     # Convenience for loading config/foo.yml for the current Rails env.
     #
     # Examples:
@@ -288,6 +292,7 @@ module Rails
           "action_dispatch.content_security_policy_nonce_generator" => config.content_security_policy_nonce_generator,
           "action_dispatch.content_security_policy_nonce_directives" => config.content_security_policy_nonce_directives,
           "action_dispatch.feature_policy" => config.feature_policy,
+          "action_dispatch.controller_resolver" => controller_resolver,
         )
       end
     end

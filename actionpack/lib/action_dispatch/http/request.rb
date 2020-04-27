@@ -87,17 +87,7 @@ module ActionDispatch
 
     def controller_class_for(name)
       if name
-        controller_param = name.underscore
-        const_name = controller_param.camelize << "Controller"
-        begin
-          ActiveSupport::Dependencies.constantize(const_name)
-        rescue NameError => error
-          if error.missing_name == const_name || const_name.start_with?("#{error.missing_name}::")
-            raise MissingController.new(error.message, error.name)
-          else
-            raise
-          end
-        end
+        controller_resolver.call(name)
       else
         PASS_NOT_FOUND
       end
@@ -432,6 +422,10 @@ module ActionDispatch
     end
 
     private
+      def controller_resolver
+        get_header("action_dispatch.controller_resolver") || ActionController::ControllerResolver.new
+      end
+
       def check_method(name)
         HTTP_METHOD_LOOKUP[name] || raise(ActionController::UnknownHttpMethod, "#{name}, accepted HTTP methods are #{HTTP_METHODS[0...-1].join(', ')}, and #{HTTP_METHODS[-1]}")
         name

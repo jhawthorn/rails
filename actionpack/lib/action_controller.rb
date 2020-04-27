@@ -16,6 +16,7 @@ module ActionController
 
   eager_autoload do
     autoload :Caching
+    autoload :ControllerResolver
   end
 
   autoload_under "metal" do

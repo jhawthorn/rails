@@ -198,6 +198,13 @@ module Rails
         end
       end
 
+      # Clear controller
+      initializer :set_controller_resolver_cache do |app|
+        app.reloader.to_run do
+          app.controller_resolver.clear
+        end
+      end
+
       # Set clearing dependencies after the finisher hook to ensure paths
       # added in the hook are taken into account.
       initializer :set_clear_dependencies_hook, group: :all do |app|
