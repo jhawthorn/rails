@@ -65,15 +65,6 @@ module ActionView #:nodoc:
       end.uniq
     end
 
-    def find_all_with_query(query) # :nodoc:
-      paths.each do |resolver|
-        templates = resolver.find_all_with_query(query)
-        return templates unless templates.empty?
-      end
-
-      []
-    end
-
     private
       def _find_all(path, prefixes, args)
         prefixes = [prefixes] if String === prefixes
