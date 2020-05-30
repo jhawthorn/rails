@@ -339,6 +339,23 @@ module ActionView
       @path = File.expand_path(path)
     end
 
+    def clear_cache
+      @all_template_paths = nil
+      super
+    end
+
+    def all_template_paths # :nodoc:
+      @all_template_paths ||=
+        begin
+          paths = Dir["**/*", base: @path]
+          paths.reject do |filename|
+            File.directory?(filename)
+          end.map do |filename|
+            filename.gsub(/\.[^\/]*\z/, '')
+          end.uniq
+        end
+    end
+
     def to_s
       @path.to_s
     end
@@ -430,6 +447,10 @@ module ActionView
 
     def self.instances
       [new(""), new("/")]
+    end
+
+    def all_template_paths
+      []
     end
 
     def build_unbound_template(template, _)

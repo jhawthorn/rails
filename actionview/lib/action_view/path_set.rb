@@ -59,6 +59,12 @@ module ActionView #:nodoc:
       find_all(path, prefixes, *args).any?
     end
 
+    def all_template_paths # :nodoc:
+      paths.flat_map do |resolver|
+        resolver.all_template_paths
+      end.uniq
+    end
+
     def find_all_with_query(query) # :nodoc:
       paths.each do |resolver|
         templates = resolver.find_all_with_query(query)

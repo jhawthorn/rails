@@ -159,18 +159,18 @@ module ActionView
 
         def resolve_directories(wildcard_dependencies)
           return [] unless @view_paths
+          return [] if wildcard_dependencies.empty?
 
-          wildcard_dependencies.flat_map { |query, templates|
-            @view_paths.find_all_with_query(query).map do |template|
-              "#{File.dirname(query)}/#{File.basename(template).split('.').first}"
-            end
-          }.sort
+          prefixes = wildcard_dependencies.map(&:chop)
+          @view_paths.all_template_paths.select do |template_path|
+            template_path.start_with?(*prefixes)
+          end.sort
         end
 
         def explicit_dependencies
           dependencies = source.scan(EXPLICIT_DEPENDENCY).flatten.uniq
 
-          wildcards, explicits = dependencies.partition { |dependency| dependency[-1] == "*" }
+          wildcards, explicits = dependencies.partition { |dependency| dependency.end_with?("*") }
 
           (explicits + resolve_directories(wildcards)).uniq
         end
