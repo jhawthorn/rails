@@ -247,7 +247,17 @@ module RenderTestCases
   end
 
   def test_render_partial_with_missing_filename
-    assert_raises(ActionView::MissingTemplate) { @view.render(partial: "test/") }
+    ex = assert_raises(ActionView::MissingTemplate) { @view.render(partial: "test/") }
+
+    # Should include suggestions inside directory
+    assert_includes ex.message, "Did you mean?  test/"
+  end
+
+  def test_render_typo_includes_suggestions
+    ex = assert_raises(ActionView::MissingTemplate) { @view.render(partial: "test/henlo_world") }
+
+    assert_includes ex.message, "Missing partial test/_henlo_world"
+    assert_includes ex.message, "Did you mean?  test/hello_world"
   end
 
   def test_render_partial_with_incompatible_object

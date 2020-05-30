@@ -27,9 +27,10 @@ module ActionView
   end
 
   class MissingTemplate < ActionViewError #:nodoc:
-    attr_reader :path
+    attr_reader :path, :path_set, :searched_paths
 
     def initialize(paths, path, prefixes, partial, details, *)
+      @path_set = paths
       @path = path
       prefixes = Array(prefixes)
       template_type = if partial
@@ -44,10 +45,36 @@ module ActionView
         path = path.sub(%r{([^/]+)$}, "_\\1")
       end
       searched_paths = prefixes.map { |prefix| [prefix, path].join("/") }
+      @searched_paths = searched_paths
 
       out  = "Missing #{template_type} #{searched_paths.join(", ")} with #{details.inspect}. Searched in:\n"
       out += paths.compact.map { |p| "  * #{p.to_s.inspect}\n" }.join
       super out
+    end
+
+    class Correction
+      def initialize(error)
+        @error = error
+      end
+
+      def corrections
+        candidates = @error.path_set.all_template_paths
+        searched_paths = @error.searched_paths
+        if searched_paths.any? { |search| candidates.include?(search) }
+          # Matched paths, but missed details
+          []
+        else
+          candidates.sort_by do |candidate|
+            searched_paths.map do |search|
+              DidYouMean::Jaro.distance(search, candidate)
+            end.min
+          end.reverse.first(4)
+        end
+      end
+    end
+
+    if defined?(DidYouMean) && DidYouMean.respond_to?(:correct_error)
+      DidYouMean.correct_error(self, Correction)
     end
   end
 
