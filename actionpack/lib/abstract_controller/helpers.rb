@@ -30,8 +30,6 @@ module AbstractController
       # This ensures that the parent class's module can be changed
       # independently of the child class's.
       def inherited(klass)
-        helpers = _helpers
-        klass._helpers = define_helpers_module(klass, helpers)
         klass.class_eval { default_helper_module! } unless klass.anonymous?
         super
       end
@@ -65,7 +63,7 @@ module AbstractController
         file, line = location.path, location.lineno
 
         methods.each do |method|
-          _helpers.class_eval <<-ruby_eval, file, line
+          _helpers_for_modification.class_eval <<-ruby_eval, file, line
             def #{method}(*args, &block)                    # def current_user(*args, &block)
               controller.send(:'#{method}', *args, &block)  #   controller.send(:'current_user', *args, &block)
             end                                             # end
@@ -127,10 +125,10 @@ module AbstractController
       #
       def helper(*args, &block)
         modules_for_helpers(args).each do |mod|
-          _helpers.include(mod)
+          _helpers_for_modification.include(mod)
         end
 
-        _helpers.module_eval(&block) if block_given?
+        _helpers_for_modification.module_eval(&block) if block_given?
       end
 
       # Clears up all existing helpers in this class, only keeping the helper
@@ -160,6 +158,15 @@ module AbstractController
           end
         end
       end
+
+        def _helpers_for_modification
+          # Check if we have built a helper unique to this class, if not, we
+          # must build one
+          unless singleton_class.method_defined?(:_helpers, false)
+            self._helpers = define_helpers_module(self, superclass._helpers_for_modification)
+          end
+          _helpers
+        end
 
       private
         def define_helpers_module(klass, helpers = nil)
