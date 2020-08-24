@@ -4,7 +4,7 @@ module ActiveRecord
   class FutureResult
     Canceled = Class.new(ActiveRecordError)
 
-    delegate :empty?, to: :result!
+    delegate :empty?, :to_a, to: :result!
 
     def initialize(pool, *args, **kwargs)
       @mutex = Mutex.new
@@ -83,8 +83,8 @@ module ActiveRecord
 
       class SelectAll < FutureResult
         private
-          def exec_query(connection, *args, **kwargs)
-            connection.exec_query(*args, **kwargs)
+          def exec_query(*, **)
+            super
           rescue ::RangeError
             ActiveRecord::Result.new([], [])
           end

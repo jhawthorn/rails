@@ -4,6 +4,20 @@ require "weakref"
 
 module ActiveRecord
   class AsynchronousQueriesTracker # :nodoc:
+    class << self
+      def install_executor_hooks(executor = ActiveSupport::Executor)
+        executor.register_hook(self)
+      end
+
+      def run
+        ActiveRecord::Base.asynchronous_queries_tracker
+      end
+
+      def complete(asynchronous_queries_tracker)
+        asynchronous_queries_tracker.finalize
+      end
+    end
+
     def initialize
       @current_queries = nil
     end
