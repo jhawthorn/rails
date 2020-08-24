@@ -16,12 +16,15 @@ module ActiveRecord
       @executed = false
       @error = nil
       @result = nil
-      schedule!
     end
 
     def schedule!
       ActiveRecord::Base.asynchronous_queries_tracker.register(self)
       @pool.schedule_query(self)
+    end
+
+    def execute!(connection)
+      execute_query(connection)
     end
 
     def cancel!

@@ -373,6 +373,11 @@ module ActiveRecord
   class TransactionRollbackError < StatementInvalid
   end
 
+  # AsynchronousQueryInsideTransaction will be raised when attempting
+  # to perform an aynchronous query from inside a transaction
+  class AsynchronousQueryInsideTransaction < ActiveRecordError
+  end
+
   # SerializationFailure will be raised when a transaction is rolled
   # back by the database due to a serialization failure.
   class SerializationFailure < TransactionRollbackError

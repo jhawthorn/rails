@@ -526,10 +526,19 @@ module ActiveRecord
         # Returns an ActiveRecord::Result instance.
         def select(sql, name = nil, binds = [], prepare: false, async: false)
           if async
-            async.new(pool, sql, name, binds, prepare: prepare)
-          else
-            exec_query(sql, name, binds, prepare: prepare)
+            if current_transaction.joinable?
+              raise AsynchronousQueryInsideTransaction, "Asynchronous queries are not allowed inside transactions"
+            end
+
+            future_result = async.new(pool, sql, name, binds, prepare: prepare)
+            if current_transaction.closed?
+              future_result.schedule!
+            else
+              future_result.execute!(self)
+            end
+            return future_result
           end
+          exec_query(sql, name, binds, prepare: prepare)
         end
 
         def sql_for_insert(sql, pk, binds)
