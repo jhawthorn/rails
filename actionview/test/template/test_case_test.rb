@@ -145,6 +145,7 @@ module ActionView
     end
 
     helper SomeHelper
+    #helper_method :render_from_helper
 
     test "can call a helper method defined on the current controller from a helper" do
       @controller.singleton_class.class_eval <<-EOF, __FILE__, __LINE__ + 1

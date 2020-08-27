@@ -115,8 +115,11 @@ class HelperTest < ActiveSupport::TestCase
     self.test_helper = LocalAbcHelper
   end
 
-  def test_helper
+  def test_helper_not_included_by_default
     assert_equal expected_helper_methods, missing_methods
+  end
+
+  def test_helper_included_explicitly
     assert_nothing_raised { @controller_class.helper TestHelper }
     assert_equal [], missing_methods
   end

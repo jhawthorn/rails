@@ -167,6 +167,7 @@ module AbstractController
 
     # Delegates to the class' ::controller_path
     def controller_path
+      #puts "reading controller_path from #{self.class}"
       self.class.controller_path
     end
 

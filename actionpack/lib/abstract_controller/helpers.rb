@@ -9,6 +9,7 @@ module AbstractController
     included do
       class_attribute :_helpers, default: define_helpers_module(self)
       class_attribute :_helper_methods, default: Array.new
+      @_helpers_has_been_set = true
     end
 
     class MissingHelperError < LoadError
@@ -30,6 +31,11 @@ module AbstractController
       # This ensures that the parent class's module can be changed
       # independently of the child class's.
       def inherited(klass)
+        klass.redefine_singleton_method(:_helpers) do
+          @_helpers_has_been_accessed = caller
+          super().freeze
+          #superclass._helpers
+        end
         klass.class_eval { default_helper_module! } unless klass.anonymous?
         super
       end
@@ -159,14 +165,21 @@ module AbstractController
         end
       end
 
-        def _helpers_for_modification
-          # Check if we have built a helper unique to this class, if not, we
-          # must build one
-          unless singleton_class.method_defined?(:_helpers, false)
-            self._helpers = define_helpers_module(self, superclass._helpers_for_modification)
+      def _helpers_for_modification
+        # Check if we have built a helper unique to this class, if not, we
+        # must build one
+        @_helpers_has_been_set ||= nil
+
+        unless @_helpers_has_been_set
+          @_helpers_has_been_accessed ||= nil
+          if @_helpers_has_been_accessed
+            raise "_helpers has already been accessed at: #{@_helpers_has_been_accessed.join("\n")}"
           end
-          _helpers
+          self._helpers = define_helpers_module(self, superclass._helpers)
         end
+        @_helpers_has_been_set = true
+        _helpers
+      end
 
       private
         def define_helpers_module(klass, helpers = nil)
