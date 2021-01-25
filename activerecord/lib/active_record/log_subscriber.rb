@@ -39,6 +39,7 @@ module ActiveRecord
 
       name  = "#{payload[:name]} (#{event.duration.round(1)}ms)"
       name  = "CACHE #{name}" if payload[:cached]
+      name  = "BACKGROUND #{name}" if payload[:background]
       sql   = payload[:sql]
       binds = nil
 

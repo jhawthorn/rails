@@ -237,6 +237,54 @@ module ActiveRecord
       assert result.is_a?(ActiveRecord::Result)
     end
 
+    def test_async_select_all
+      status = {}
+
+      monitor = Monitor.new
+      condition = monitor.new_cond
+
+      subscriber = ActiveSupport::Notifications.subscribe("sql.active_record") do |event|
+        if event.payload[:sql] ==  "SELECT * FROM posts"
+          status[:executed] = true
+          status[:in_background] = event.payload[:background]
+          monitor.synchronize { condition.signal }
+        end
+      end
+
+      future_result = @connection.select_all "SELECT * FROM posts", async: true
+      assert_kind_of ActiveRecord::FutureResult, future_result
+
+      monitor.synchronize do
+        condition.wait_until { status[:executed] }
+      end
+      assert_kind_of ActiveRecord::Result, future_result.result!
+      assert_equal true, status[:in_background]
+    ensure
+      ActiveRecord::Base.asynchronous_queries_tracker.finalize
+      ActiveSupport::Notifications.unsubscribe(subscriber) if subscriber
+    end
+
+    def test_async_select_failure
+      future_result = @connection.select_all "SELECT * FROM does_not_exists", async: true
+      assert_kind_of ActiveRecord::FutureResult, future_result
+      assert_raises ActiveRecord::StatementInvalid do
+        future_result.result!
+      end
+    ensure
+      ActiveRecord::Base.asynchronous_queries_tracker.finalize
+    end
+
+    def test_async_query_cache
+      @connection.enable_query_cache!
+
+      @connection.select_all "SELECT * FROM posts"
+      result = @connection.select_all "SELECT * FROM posts", async: true
+      assert_equal Result, result.class
+    ensure
+      ActiveRecord::Base.asynchronous_queries_tracker.finalize
+      @connection.disable_query_cache!
+    end
+
     if ActiveRecord::Base.connection.prepared_statements
       def test_select_all_insert_update_delete_with_legacy_binds
         binds = [[Event.column_for_attribute("id"), 1]]

@@ -221,6 +221,15 @@ module ActiveRecord
         default_shard
       end
 
+      def self.asynchronous_queries_tracker
+        Thread.current.thread_variable_get(:ar_asynchronous_queries_tracker) ||
+          self.asynchronous_queries_tracker = AsynchronousQueriesTracker.new
+      end
+
+      def self.asynchronous_queries_tracker=(handler)
+        Thread.current.thread_variable_set(:ar_asynchronous_queries_tracker, handler)
+      end
+
       # Returns the symbol representing the current setting for
       # preventing writes.
       #

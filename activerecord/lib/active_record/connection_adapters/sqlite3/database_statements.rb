@@ -33,7 +33,7 @@ module ActiveRecord
           end
         end
 
-        def exec_query(sql, name = nil, binds = [], prepare: false)
+        def exec_query(sql, name = nil, binds = [], prepare: false, background: false)
           if preventing_writes? && write_query?(sql)
             raise ActiveRecord::ReadOnlyError, "Write query attempted while in readonly mode: #{sql}"
           end
@@ -43,7 +43,7 @@ module ActiveRecord
 
           type_casted_binds = type_casted_binds(binds)
 
-          log(sql, name, binds, type_casted_binds) do
+          log(sql, name, binds, type_casted_binds, background: background) do
             ActiveSupport::Dependencies.interlock.permit_concurrent_loads do
               # Don't cache statements if they are not prepared
               unless prepare

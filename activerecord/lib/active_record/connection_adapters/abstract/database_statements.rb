@@ -59,15 +59,11 @@ module ActiveRecord
       end
 
       # Returns an ActiveRecord::Result instance.
-      def select_all(arel, name = nil, binds = [], preparable: nil)
+      def select_all(arel, name = nil, binds = [], preparable: nil, async: false)
         arel = arel_from_relation(arel)
         sql, binds, preparable = to_sql_and_binds(arel, binds, preparable)
 
-        if prepared_statements && preparable
-          select_prepared(sql, name, binds)
-        else
-          select(sql, name, binds)
-        end
+        select(sql, name, binds, prepare: prepared_statements && preparable, async: async && FutureResult::SelectAll)
       rescue ::RangeError
         ActiveRecord::Result.new([], [])
       end
@@ -528,12 +524,12 @@ module ActiveRecord
         end
 
         # Returns an ActiveRecord::Result instance.
-        def select(sql, name = nil, binds = [])
-          exec_query(sql, name, binds, prepare: false)
-        end
-
-        def select_prepared(sql, name = nil, binds = [])
-          exec_query(sql, name, binds, prepare: true)
+        def select(sql, name = nil, binds = [], prepare: false, async: false)
+          if async
+            async.new(pool, sql, name, binds, prepare: prepare)
+          else
+            exec_query(sql, name, binds, prepare: prepare)
+          end
         end
 
         def sql_for_insert(sql, pk, binds)

@@ -683,7 +683,7 @@ module ActiveRecord
           exception
         end
 
-        def log(sql, name = "SQL", binds = [], type_casted_binds = [], statement_name = nil) # :doc:
+        def log(sql, name = "SQL", binds = [], type_casted_binds = [], statement_name = nil, background: false) # :doc:
           @instrumenter.instrument(
             "sql.active_record",
             sql:               sql,
@@ -691,6 +691,7 @@ module ActiveRecord
             binds:             binds,
             type_casted_binds: type_casted_binds,
             statement_name:    statement_name,
+            background:        background,
             connection:        self) do
             @lock.synchronize do
               yield

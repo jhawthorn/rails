@@ -197,11 +197,11 @@ module ActiveRecord
       #++
 
       # Executes the SQL statement in the context of this connection.
-      def execute(sql, name = nil)
+      def execute(sql, name = nil, background: false)
         materialize_transactions
         mark_transaction_written_if_write(sql)
 
-        log(sql, name) do
+        log(sql, name, background: background) do
           ActiveSupport::Dependencies.interlock.permit_concurrent_loads do
             @connection.query(sql)
           end
@@ -211,8 +211,8 @@ module ActiveRecord
       # Mysql2Adapter doesn't have to free a result after using it, but we use this method
       # to write stuff in an abstract way without concerning ourselves about whether it
       # needs to be explicitly freed or not.
-      def execute_and_free(sql, name = nil) # :nodoc:
-        yield execute(sql, name)
+      def execute_and_free(sql, name = nil, background: false) # :nodoc:
+        yield execute(sql, name, background: background)
       end
 
       def begin_db_transaction
