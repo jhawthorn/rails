@@ -16,10 +16,12 @@ module ActiveRecord
       @executed = false
       @error = nil
       @result = nil
+
+      @async_query_tracker = ActiveRecord::Base.asynchronous_queries_tracker
     end
 
     def schedule!
-      ActiveRecord::Base.asynchronous_queries_tracker.register(self)
+      return unless @async_query_tracker.running?
       @pool.schedule_query(self)
     end
 
@@ -58,26 +60,25 @@ module ActiveRecord
     private
       def execute_or_wait
         return if @executed
-        if @mutex.try_lock
-          begin
-            execute_query(@pool.connection)
-          ensure
-            @mutex.unlock
-          end
-        else
-          @mutex.synchronize do
-            return if @executed
-            execute_query
-          end
+        @mutex.synchronize do
+          return if @executed
+          execute_query(@pool.connection)
         end
       end
 
       def execute_query(connection, background: false)
-        @result = exec_query(connection, *@args, **@kwargs, background: background)
-      rescue => error
-        @error = error
-      ensure
-        @executed = true
+        if @async_query_tracker.running?
+          begin
+            @result = exec_query(connection, *@args, **@kwargs, background: background)
+          rescue => error
+            @error = error
+          ensure
+            @executed = true
+          end
+        else
+          @executed = true
+          @error = Canceled
+        end
       end
 
       def exec_query(connection, *args, **kwargs)

@@ -10,38 +10,32 @@ module ActiveRecord
       end
 
       def run
-        ActiveRecord::Base.asynchronous_queries_tracker
+        reset!
       end
 
       def complete(asynchronous_queries_tracker)
         asynchronous_queries_tracker.finalize
+        reset!
       end
+
+      private
+
+        def reset!
+          ActiveRecord::Base.asynchronous_queries_tracker = new
+        end
     end
 
     def initialize
-      @current_queries = nil
+      @running = Concurrent::AtomicBoolean.new(true)
     end
 
-    def register(future_result)
-      current_queries[future_result] = future_result
+    def running?
+      @running.true?
     end
 
     # This should be called from a request/job middleware to cancel all queries that might not have been used
     def finalize
-      if queries = reset!
-        queries.each_value(&:cancel!)
-      end
+      @running.make_false
     end
-
-    private
-      def reset!
-        queries = @current_queries
-        @current_queries = nil
-        queries
-      end
-
-      def current_queries
-        @current_queries ||= ObjectSpace::WeakMap.new
-      end
   end
 end
