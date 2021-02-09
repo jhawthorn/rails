@@ -435,9 +435,18 @@ module ActiveRecord
       future_result = @connection.select_all "SELECT * FROM posts", async: true
       assert_kind_of ActiveRecord::FutureResult, future_result
 
-      monitor.synchronize do
-        condition.wait_until { status[:executed] }
+      timeout = false
+      timeout_thread = Thread.new do
+        sleep 5
+        timeout = true
+        monitor.synchronize do
+          condition.signal
+        end
       end
+      monitor.synchronize do
+        condition.wait_until { status[:executed] || timeout }
+      end
+      assert !timeout, "async query didn't execute within 5 seconds"
       assert_kind_of ActiveRecord::Result, future_result.result
       assert_equal @connection.supports_concurrent_connections?, status[:async]
     ensure
