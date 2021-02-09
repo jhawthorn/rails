@@ -197,11 +197,24 @@ module ActiveRecord
       #++
 
       # Executes the SQL statement in the context of this connection.
-      def execute(sql, name = nil, async: false)
+      def execute(sql, name = nil)
         materialize_transactions
         mark_transaction_written_if_write(sql)
 
-        log(sql, name, async: async) do
+        log(sql, name) do
+          ActiveSupport::Dependencies.interlock.permit_concurrent_loads do
+            @connection.query(sql)
+          end
+        end
+      end
+
+      def execute_async(sql, name = nil)
+        p "executing async"
+        materialize_transactions
+        mark_transaction_written_if_write(sql)
+
+        log(sql, name, async: true) do
+          raise
           ActiveSupport::Dependencies.interlock.permit_concurrent_loads do
             @connection.query(sql)
           end
@@ -212,7 +225,11 @@ module ActiveRecord
       # to write stuff in an abstract way without concerning ourselves about whether it
       # needs to be explicitly freed or not.
       def execute_and_free(sql, name = nil, async: false) # :nodoc:
-        yield execute(sql, name, async: async)
+        if async
+          yield execute_async(sql, name)
+        else
+          yield execute(sql, name)
+        end
       end
 
       def begin_db_transaction

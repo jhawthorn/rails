@@ -38,7 +38,7 @@ module ActiveRecord
         end
 
         # Executes the SQL statement in the context of this connection.
-        def execute(sql, name = nil, async: false)
+        def execute(sql, name = nil)
           check_if_write_query(sql)
 
           # make sure we carry over any changes to ActiveRecord::Base.default_timezone that have been
