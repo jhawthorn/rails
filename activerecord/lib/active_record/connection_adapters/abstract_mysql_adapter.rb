@@ -208,18 +208,6 @@ module ActiveRecord
         end
       end
 
-      def execute_async(sql, name = nil)
-        p "executing async"
-        materialize_transactions
-        mark_transaction_written_if_write(sql)
-
-        log(sql, name, async: true) do
-          raise
-          ActiveSupport::Dependencies.interlock.permit_concurrent_loads do
-            @connection.query(sql)
-          end
-        end
-      end
 
       # Mysql2Adapter doesn't have to free a result after using it, but we use this method
       # to write stuff in an abstract way without concerning ourselves about whether it
