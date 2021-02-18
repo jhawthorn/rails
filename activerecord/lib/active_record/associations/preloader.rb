@@ -46,6 +46,7 @@ module ActiveRecord
 
       eager_autoload do
         autoload :Association,        "active_record/associations/preloader/association"
+        autoload :Batch,              "active_record/associations/preloader/batch"
         autoload :ThroughAssociation, "active_record/associations/preloader/through_association"
       end
 
@@ -94,20 +95,19 @@ module ActiveRecord
           @scope = kwargs[:scope]
           @associate_by_default = associate_by_default
           @polymorphic_parent = polymorphic_parent
-          @child_preloaders = []
+          @child_preloader_args = []
+          @loaders = build_preloaders
         end
       end
 
+      def empty?
+        associations.nil? || records.length == 0
+      end
+
       def call
-        return [] if associations.nil? || records.length == 0
+        Batch.new([self]).call
 
-        loaders = build_preloaders
-        group_and_load_similar(loaders)
-        loaders.map(&:run)
-
-        child_preloaders.each { |reflection, child, parents| build_child_preloader(reflection, child, parents) }
-
-        loaders
+        @loaders
       end
 
       def preload(records, associations, preload_scope = nil)
@@ -116,8 +116,15 @@ module ActiveRecord
         Preloader.new(records: records, associations: associations, scope: preload_scope).call
       end
 
+      attr_accessor :loaders
+
+      def child_preloaders
+        @child_preloader_args.map do |reflection, child, parents|
+          build_child_preloader(reflection, child, parents)
+        end
+      end
+
       private
-        attr_accessor :child_preloaders
 
         def build_preloaders
           Array.wrap(associations).flat_map { |association|
@@ -126,7 +133,7 @@ module ActiveRecord
                 loaders = preloaders_for_reflection(reflection, reflection_records)
 
                 if child
-                  child_preloaders << [reflection, child, loaders]
+                  @child_preloader_args << [reflection, child, loaders]
                 end
 
                 loaders
@@ -139,7 +146,7 @@ module ActiveRecord
           child_polymorphic_parent = reflection && reflection.options[:polymorphic]
           preloaded_records = loaders.flat_map(&:preloaded_records).uniq
 
-          Preloader.new(records: preloaded_records, associations: child, scope: scope, associate_by_default: associate_by_default, polymorphic_parent: child_polymorphic_parent).call
+          Preloader.new(records: preloaded_records, associations: child, scope: scope, associate_by_default: associate_by_default, polymorphic_parent: child_polymorphic_parent)
         end
 
         def preloaders_for_reflection(reflection, reflection_records)
@@ -168,15 +175,6 @@ module ActiveRecord
             ThroughAssociation
           else
             Association
-          end
-        end
-
-        def group_and_load_similar(loaders)
-          loaders.grep_v(ThroughAssociation).group_by(&:grouping_key).each do |(_, _, association_key_name), similar_loaders|
-            next if similar_loaders.all? { |l| l.already_loaded? }
-
-            scope = similar_loaders.first.scope
-            Association.load_records_in_batch(scope, association_key_name, similar_loaders)
           end
         end
     end
