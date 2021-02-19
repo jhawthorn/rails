@@ -12,7 +12,10 @@ module ActiveRecord
           return if @preloaders.empty?
 
           loaders = @preloaders.flat_map(&:loaders)
+
+          # Batch as many as possible and start them loading
           group_and_load_similar(loaders)
+
           loaders.each(&:run)
 
           child_preloaders = @preloaders.flat_map(&:child_preloaders)

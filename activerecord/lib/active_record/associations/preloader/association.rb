@@ -7,11 +7,8 @@ module ActiveRecord
         def self.load_records_in_batch(scope, association_key_name, loaders)
           ids = loaders.flat_map(&:owner_keys).uniq
 
-          raw_records = scope.where(association_key_name => ids).load do |record|
-            loaders.each { |l| l.set_inverse(record) }
-          end
-
-          loaders.each { |l| l.load_records(raw_records) }
+          async_records = scope.where(association_key_name => ids).load_async
+          loaders.each { |l| l.async_records = async_records }
         end
 
         def initialize(klass, owners, reflection, preload_scope, associate_by_default = true)
@@ -82,11 +79,21 @@ module ActiveRecord
           end
         end
 
-        def load_records(raw_records = nil)
+        attr_writer :async_records
+        def async_records
+          @async_records ||= scope.where(association_key_name => owner_keys).load_async
+        end
+
+        def raw_records
+          async_records.load do |record|
+            set_inverse(record)
+          end
+        end
+
+        def load_records
           # owners can be duplicated when a relation has a collection association join
           # #compare_by_identity makes such owners different hash keys
           @records_by_owner = {}.compare_by_identity
-          raw_records ||= owner_keys.empty? ? [] : records_for(owner_keys)
 
           @preloaded_records = raw_records.select do |record|
             assignments = false
@@ -158,12 +165,6 @@ module ActiveRecord
 
           def owner_key_type
             @model.type_for_attribute(owner_key_name).type
-          end
-
-          def records_for(ids)
-            scope.where(association_key_name => ids).load do |record|
-              set_inverse(record)
-            end
           end
 
           def reflection_scope
