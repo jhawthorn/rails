@@ -52,7 +52,13 @@ module ActiveRecord
         end
 
         def preloaded_records
-          load_records unless defined?(@preloaded_records)
+          unless defined?(@preloaded_records)
+            if already_loaded?
+              fetch_from_preloaded_records
+            else
+              load_records
+            end
+          end
 
           @preloaded_records
         end
