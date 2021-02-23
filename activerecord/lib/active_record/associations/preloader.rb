@@ -50,6 +50,30 @@ module ActiveRecord
         autoload :ThroughAssociation, "active_record/associations/preloader/through_association"
       end
 
+      class Branch
+        attr_reader :association, :children
+
+        attr_reader :children_hash # FIXME: remove this
+
+        def initialize(association, children)
+          @association = association
+          @children_hash = children
+          @children = build_children(children)
+        end
+
+        def build_children(children)
+          Array.wrap(children).flat_map { |association|
+            Array(association).flat_map { |parent, child|
+              Branch.new(parent, child)
+            }
+          }
+        end
+
+        def root?
+          association.nil?
+        end
+      end
+
       attr_reader :records, :associations, :scope, :associate_by_default, :polymorphic_parent
       attr_reader :loaders
 
@@ -124,20 +148,28 @@ module ActiveRecord
       end
 
       private
+        def tree
+          @tree ||= Branch.new(nil, associations)
+        end
+
+        def branches
+          tree.children
+        end
+
         def build_preloaders
-          Array.wrap(associations).flat_map { |association|
-            Array(association).flat_map { |parent, child|
-              grouped_records(parent).flat_map do |reflection, reflection_records|
-                loaders = preloaders_for_reflection(reflection, reflection_records)
+          branches.flat_map do |branch|
+            child = branch.children_hash
 
-                if child
-                  @child_preloader_args << [reflection, child, loaders]
-                end
+            grouped_records(branch.association).flat_map do |reflection, reflection_records|
+              loaders = preloaders_for_reflection(reflection, reflection_records)
 
-                loaders
+              if child
+                @child_preloader_args << [reflection, child, loaders]
               end
-            }
-          }
+
+              loaders
+            end
+          end
         end
 
         def build_child_preloader(reflection, child, loaders)
