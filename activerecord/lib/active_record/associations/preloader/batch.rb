@@ -12,7 +12,8 @@ module ActiveRecord
           return if @preloaders.empty?
 
           loaders = @preloaders.flat_map(&:loaders)
-          group_and_load_similar(loaders)
+          groupable_loaders = loaders.flat_map(&:groupable_loaders)
+          group_and_load_similar(groupable_loaders)
           loaders.each(&:run)
 
           child_preloaders = @preloaders.flat_map(&:child_preloaders)

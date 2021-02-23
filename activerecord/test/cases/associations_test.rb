@@ -430,8 +430,7 @@ class PreloaderTest < ActiveRecord::TestCase
   def test_preload_grouped_queries_of_through_records
     author = authors(:david)
 
-    # FIXME: should be 3
-    assert_queries(4) do
+    assert_queries(3) do
       ActiveRecord::Associations::Preloader.new(records: [author], associations: [:hello_post_comments, :comments]).call
     end
   end

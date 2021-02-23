@@ -26,6 +26,10 @@ module ActiveRecord
           @model         = owners.first && owners.first.class
         end
 
+        def groupable_loaders
+          [self]
+        end
+
         def already_loaded?
           @already_loaded ||= owners.all? { |o| o.association(reflection.name).loaded? }
         end
