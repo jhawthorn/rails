@@ -10,7 +10,6 @@ module ActiveRecord
 
         def call
           branches = @preloaders.flat_map(&:branches)
-          p branches.index_with(&:referenced_tables)
           until branches.empty?
             loaders = branches.flat_map(&:runnable_loaders)
 

@@ -18,10 +18,6 @@ module ActiveRecord
           @loaders = nil
         end
 
-        def inspect
-          "<##{self.class} #{@association}>"
-        end
-
         def referenced_classes
           (target_classes + children.flat_map(&:referenced_classes)).uniq
         end
