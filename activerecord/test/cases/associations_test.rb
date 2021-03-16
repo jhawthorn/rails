@@ -548,6 +548,23 @@ class PreloaderTest < ActiveRecord::TestCase
     end
   end
 
+  def test_preload_can_group_separate_levels
+    mary = authors(:mary)
+    bob = authors(:bob)
+
+    AuthorFavorite.create!(author: mary, favorite_author: bob)
+
+    assert_queries(3) do
+      preloader = ActiveRecord::Associations::Preloader.new(records: [mary], associations: [:posts, :favorite_authors => :posts])
+      preloader.call
+    end
+
+    assert_no_queries do
+      mary.posts
+      mary.favorite_authors.map(&:posts)
+    end
+  end
+
   def test_preload_does_not_group_same_class_different_scope
     post = posts(:welcome)
     postesque = Postesque.create(author: Author.last)

@@ -10,14 +10,22 @@ module ActiveRecord
 
         def call
           branches = @preloaders.flat_map(&:branches)
+          p branches.index_with(&:referenced_tables)
           until branches.empty?
             loaders = branches.flat_map(&:runnable_loaders)
 
-            already_loaded, loaders = loaders.partition(&:already_loaded?)
-            already_loaded.each(&:run)
+            already_loaded = loaders.select(&:already_loaded?)
+            if already_loaded.any?
+              already_loaded.each(&:run)
+            elsif loaders.any?
+              future_tables = branches.flat_map(&:children).flat_map(&:referenced_tables).uniq
 
-            group_and_load_similar(loaders)
-            loaders.each(&:run)
+              target_loaders = loaders.reject { |l| future_tables.include?(l.table_name)  }
+              target_loaders = loaders if target_loaders.empty?
+
+              group_and_load_similar(target_loaders)
+              target_loaders.each(&:run)
+            end
 
             finished, in_progress = branches.partition(&:done?)
 

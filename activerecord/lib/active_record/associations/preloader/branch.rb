@@ -15,6 +15,34 @@ module ActiveRecord
           @associate_by_default = associate_by_default
 
           @children = build_children(children)
+          @loaders = nil
+        end
+
+        def inspect
+          "<##{self.class} #{@association}>"
+        end
+
+        def referenced_classes
+          (target_classes + children.flat_map(&:referenced_classes)).uniq
+        end
+
+        def referenced_tables
+          (referenced_classes).map(&:table_name).uniq
+        end
+
+        def target_classes
+          if parent.done?
+            loaders.map(&:klass).uniq
+          else
+            parent.target_classes.map do |klass|
+              assoc = klass._reflect_on_association(@association)
+              assoc.klass if assoc && !assoc.polymorphic?
+            end.uniq.compact
+          end
+        end
+
+        def target_tables
+          target_classes.map(&:table_name).uniq
         end
 
         def root?
@@ -30,7 +58,7 @@ module ActiveRecord
         end
 
         def done?
-          loaders.all?(&:run?)
+          root? || (@loaders && @loaders.all?(&:run?))
         end
 
         def runnable_loaders

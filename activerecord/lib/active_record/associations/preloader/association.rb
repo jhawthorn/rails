@@ -40,6 +40,8 @@ module ActiveRecord
           end
         end
 
+        attr_reader :klass
+
         def initialize(klass, owners, reflection, preload_scope, associate_by_default = true)
           @klass         = klass
           @owners        = owners.uniq(&:__id__)
@@ -48,6 +50,10 @@ module ActiveRecord
           @associate     = associate_by_default || !preload_scope || preload_scope.empty_scope?
           @model         = owners.first && owners.first.class
           @run = false
+        end
+
+        def table_name
+          @klass.table_name
         end
 
         def already_loaded?
@@ -149,7 +155,7 @@ module ActiveRecord
         end
 
         private
-          attr_reader :owners, :reflection, :preload_scope, :model, :klass
+          attr_reader :owners, :reflection, :preload_scope, :model
 
           def fetch_from_preloaded_records
             @records_by_owner = owners.index_with do |owner|
