@@ -30,10 +30,16 @@ module ActiveRecord
           if parent.done?
             loaders.map(&:klass).uniq
           else
-            parent.target_classes.map do |klass|
-              assoc = klass._reflect_on_association(@association)
-              assoc.klass if assoc && !assoc.polymorphic?
-            end.uniq.compact
+            parent.target_classes.flat_map do |klass|
+              reflection = klass._reflect_on_association(@association)
+              next [] unless reflection
+
+              reflection.
+                collect_join_chain.
+                grep(Reflection::AssociationReflection).
+                reject(&:polymorphic?).
+                map(&:klass)
+            end.uniq
           end
         end
 
