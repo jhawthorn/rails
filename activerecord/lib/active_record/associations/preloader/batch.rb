@@ -37,7 +37,8 @@ module ActiveRecord
 
           def group_and_load_similar(loaders)
             loaders.grep_v(ThroughAssociation).group_by(&:loader_query).each_pair do |query, similar_loaders|
-              query.load_records_in_batch(similar_loaders)
+              result = query.load_records_in_batch(similar_loaders)
+              result.load_async
             end
           end
       end
