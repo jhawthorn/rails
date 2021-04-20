@@ -109,7 +109,7 @@ module ActionView
 
     private
       def _set_detail(key, value) # :doc:
-        @details = @details.dup if @digest_cache || @details_key
+        @details = @details.dup
         @digest_cache = nil
         @details_key = nil
         @details[key] = value
