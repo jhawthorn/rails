@@ -17,8 +17,9 @@ module ActionView
 
       def self.build(name, prefix, partial)
         virtual = +""
-        virtual << "#{prefix}/" unless prefix.empty?
-        virtual << (partial ? "_#{name}" : name)
+        virtual << prefix << "/" unless prefix.empty?
+        virtual << "_" if partial
+        virtual << name
         new name, prefix, partial, virtual
       end
 
