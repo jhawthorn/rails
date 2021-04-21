@@ -16,11 +16,23 @@ module ActionView
       @locale = locale
       @virtual_path = virtual_path
 
-      @templates = Concurrent::Map.new(initial_capacity: 2)
+      @write_lock = Mutex.new
+      @templates = {}
     end
 
     def bind_locals(locals)
-      @templates[locals] ||= build_template(locals)
+      if template = @templates[locals]
+        template
+      else
+        @write_lock.synchronize do
+          # De-dup same locals in a different order
+          normalized_locals = locals.map(&:to_s).sort!.freeze
+          @templates[normalized_locals] ||= build_template(locals)
+
+          # locals may be the same as normalized locals. That's fine
+          @templates[locals] = @templates[normalized_locals]
+        end
+      end
     end
 
     private
