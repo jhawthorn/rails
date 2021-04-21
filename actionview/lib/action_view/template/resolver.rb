@@ -152,10 +152,7 @@ module ActionView
     # Normalizes the arguments and passes it on to find_templates.
     def find_all(name, prefix = nil, partial = false, details = {}, key = nil, locals = [])
       locals = locals.map(&:to_s).sort!.freeze
-
-      cached(key, [name, prefix, partial], details, locals) do
-        _find_all(name, prefix, partial, details, key, locals)
-      end
+      _find_all(name, prefix, partial, details, key, locals)
     end
 
     def all_template_paths # :nodoc:
@@ -231,15 +228,12 @@ module ActionView
 
     private
       def _find_all(name, prefix, partial, details, key, locals)
-        path = Path.build(name, prefix, partial)
-        query(path, details, details[:formats], locals, cache: !!key)
-      end
-
-      def query(path, details, formats, locals, cache:)
-        cache = cache ? @unbound_templates : Concurrent::Map.new
+        virtual = Path.virtual(name, prefix, partial)
+        cache = key ? @unbound_templates : Concurrent::Map.new
 
         unbound_templates =
-          cache.compute_if_absent(path.virtual) do
+          cache.compute_if_absent(virtual) do
+            path = Path.new(name, prefix, partial, virtual)
             unbound_templates_from_path(path)
           end
 
