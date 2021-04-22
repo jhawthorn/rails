@@ -78,63 +78,6 @@ module ActionView
       end
     end
 
-    # Threadsafe template cache
-    class Cache #:nodoc:
-      class SmallCache < Concurrent::Map
-        def initialize(options = {})
-          super(options.merge(initial_capacity: 2))
-        end
-      end
-
-      # Preallocate all the default blocks for performance/memory consumption reasons
-      PARTIAL_BLOCK = lambda { |cache, partial| cache[partial] = SmallCache.new }
-      PREFIX_BLOCK  = lambda { |cache, prefix|  cache[prefix]  = SmallCache.new(&PARTIAL_BLOCK) }
-      NAME_BLOCK    = lambda { |cache, name|    cache[name]    = SmallCache.new(&PREFIX_BLOCK) }
-      KEY_BLOCK     = lambda { |cache, key|     cache[key]     = SmallCache.new(&NAME_BLOCK) }
-
-      # Usually a majority of template look ups return nothing, use this canonical preallocated array to save memory
-      NO_TEMPLATES = [].freeze
-
-      def initialize
-        @data = SmallCache.new(&KEY_BLOCK)
-      end
-
-      def inspect
-        "#{to_s[0..-2]} keys=#{@data.size}>"
-      end
-
-      # Cache the templates returned by the block
-      def cache(key, name, prefix, partial, locals)
-        @data[key][name][prefix][partial][locals] ||= canonical_no_templates(yield)
-      end
-
-      def clear
-        @data.clear
-      end
-
-      # Get the cache size. Do not call this
-      # method. This method is not guaranteed to be here ever.
-      def size # :nodoc:
-        size = 0
-        @data.each_value do |v1|
-          v1.each_value do |v2|
-            v2.each_value do |v3|
-              v3.each_value do |v4|
-                size += v4.size
-              end
-            end
-          end
-        end
-
-        size
-      end
-
-      private
-        def canonical_no_templates(templates)
-          templates.empty? ? NO_TEMPLATES : templates
-        end
-    end
-
     cattr_accessor :caching, default: true
 
     class << self
@@ -142,11 +85,9 @@ module ActionView
     end
 
     def initialize
-      @cache = Cache.new
     end
 
     def clear_cache
-      @cache.clear
     end
 
     # Normalizes the arguments and passes it on to find_templates.

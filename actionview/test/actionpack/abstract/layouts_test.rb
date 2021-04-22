@@ -286,7 +286,7 @@ module AbstractControllerTests
       end
 
       test "cache should not grow when locals change for a string template" do
-        cache = WithString.view_paths.paths.first.instance_variable_get(:@cache)
+        cache = WithString.view_paths.paths.first.instance_variable_get(:@unbound_templates)
 
         controller = WithString.new
         controller.process(:index) # heat the cache
