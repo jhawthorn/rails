@@ -237,7 +237,7 @@ module ActionView
             unbound_templates_from_path(path)
           end
 
-        filter_and_sort_by_details(unbound_templates, details).map do |unbound_template|
+        filter_and_sort_by_details(unbound_templates, details).map! do |unbound_template|
           unbound_template.bind_locals(locals)
         end
       end
@@ -279,30 +279,39 @@ module ActionView
       end
 
       def filter_and_sort_by_details(templates, details)
+        return templates if templates.empty?
+
         locale = details[:locale]
         formats = details[:formats]
         variants = details[:variants]
         handlers = details[:handlers]
 
-        results = templates.map do |template|
-          locale_match = details_match_sort_key(template.locale, locale) || next
-          format_match = details_match_sort_key(template.format, formats) || next
-          variant_match =
+        templates =
+          templates.select do |template|
+            if (!template.locale || locale.include?(template.locale)) &&
+                (!template.format || formats.include?(template.format)) &&
+                (!template.variant || variants == :any || variants.include?(template.variant.to_sym)) &&
+                (!template.handler || handlers.include?(template.handler))
+              templates
+            end
+          end
+
+        return templates if templates.size <= 1
+
+        templates.sort_by! do |template|
+          [
+            details_match_sort_key(template.locale, locale),
+            details_match_sort_key(template.format, formats),
             if variants == :any
               template.variant ? 1 : 0
             else
-              details_match_sort_key(template.variant&.to_sym, variants) || next
-            end
-          handler_match = details_match_sort_key(template.handler, handlers) || next
-
-          [template, [locale_match, format_match, variant_match, handler_match]]
+              details_match_sort_key(template.variant&.to_sym, variants)
+            end,
+            details_match_sort_key(template.handler, handlers)
+          ]
         end
 
-        results.compact!
-        results.sort_by!(&:last) if results.size > 1
-        results.map!(&:first)
-
-        results
+        templates
       end
 
       def details_match_sort_key(have, want)
