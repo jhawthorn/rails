@@ -92,7 +92,6 @@ module ActionView
 
     # Normalizes the arguments and passes it on to find_templates.
     def find_all(name, prefix = nil, partial = false, details = {}, key = nil, locals = [])
-      locals = locals.map(&:to_s).sort!.freeze
       _find_all(name, prefix, partial, details, key, locals)
     end
 
