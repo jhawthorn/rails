@@ -175,8 +175,10 @@ module ActionView
         unbound_templates =
           cache.compute_if_absent(virtual) do
             path = Path.new(name, prefix, partial, virtual)
-            unbound_templates_from_path(path)
+            unbound_templates_from_path(path).freeze
           end
+
+        return unbound_templates if unbound_templates.empty?
 
         filter_and_sort_by_details(unbound_templates, details).map! do |unbound_template|
           unbound_template.bind_locals(locals)
@@ -220,8 +222,6 @@ module ActionView
       end
 
       def filter_and_sort_by_details(templates, details)
-        return templates if templates.empty?
-
         locale = details[:locale]
         formats = details[:formats]
         variants = details[:variants]
