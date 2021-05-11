@@ -15,7 +15,6 @@ module ActionView
 
     class PathParser # :nodoc:
       ParsedPath = Struct.new(:path, :details)
-      TemplateDetails = Struct.new(:locale, :handler, :format, :variant)
 
       def build_path_regex
         handlers = Template::Handlers.extensions.map { |x| Regexp.escape(x) }.join("|")
