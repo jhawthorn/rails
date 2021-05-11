@@ -234,11 +234,8 @@ module ActionView
         UnboundTemplate.new(
           source,
           template,
-          details.handler,
+          details: details,
           virtual_path: parsed.path.virtual,
-          locale: details.locale,
-          format: details.format,
-          variant: details.variant,
         )
       end
 
