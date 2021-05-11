@@ -34,7 +34,7 @@ module ActionView
           handler,
 
           format: format,
-          variant: @variant,
+          variant: @variant&.to_s,
           virtual_path: @virtual_path,
 
           locals: locals

@@ -44,7 +44,7 @@ module ActionView
           match[:locale]&.to_sym,
           match[:handler]&.to_sym,
           match[:format]&.to_sym,
-          match[:variant]
+          match[:variant]&.to_sym
         )
         ParsedPath.new(path, details)
       end
@@ -272,7 +272,7 @@ module ActionView
             if variants == :any
               template.variant ? 1 : 0
             else
-              details_match_sort_key(template.variant&.to_sym, variants) || next
+              details_match_sort_key(template.variant, variants) || next
             end
           handler_match = details_match_sort_key(template.handler, handlers) || next
 
