@@ -13,9 +13,10 @@ module ActionView
     Path = ActionView::TemplatePath
     deprecate_constant :Path
 
-    TemplateDetails = Struct.new(:path, :locale, :handler, :format, :variant)
-
     class PathParser # :nodoc:
+      ParsedPath = Struct.new(:path, :details)
+      TemplateDetails = Struct.new(:locale, :handler, :format, :variant)
+
       def build_path_regex
         handlers = Template::Handlers.extensions.map { |x| Regexp.escape(x) }.join("|")
         formats = Template::Types.symbols.map { |x| Regexp.escape(x) }.join("|")
@@ -39,13 +40,13 @@ module ActionView
         @regex ||= build_path_regex
         match = @regex.match(path)
         path = TemplatePath.build(match[:action], match[:prefix] || "", !!match[:partial])
-        TemplateDetails.new(
-          path,
+        details = TemplateDetails.new(
           match[:locale]&.to_sym,
           match[:handler]&.to_sym,
           match[:format]&.to_sym,
           match[:variant]
         )
+        ParsedPath.new(path, details)
       end
     end
 
@@ -226,14 +227,15 @@ module ActionView
       end
 
       def build_unbound_template(template)
-        details = @path_parser.parse(template.from(@path.size + 1))
+        parsed = @path_parser.parse(template.from(@path.size + 1))
+        details = parsed.details
         source = source_for_template(template)
 
         UnboundTemplate.new(
           source,
           template,
           details.handler,
-          virtual_path: details.path.virtual,
+          virtual_path: parsed.path.virtual,
           locale: details.locale,
           format: details.format,
           variant: details.variant,
