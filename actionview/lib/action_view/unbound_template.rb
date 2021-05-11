@@ -22,15 +22,12 @@ module ActionView
 
     private
       def build_template(locals)
-        handler_class = Template.handler_for_extension(handler)
-        format = self.format || handler_class.try(:default_format)
-
         Template.new(
           @source,
           @identifier,
-          handler_class,
+          details.handler_class,
 
-          format: format,
+          format: details.format_or_default,
           variant: variant&.to_s,
           virtual_path: @virtual_path,
 
