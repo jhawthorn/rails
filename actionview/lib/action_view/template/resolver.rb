@@ -255,13 +255,13 @@ module ActionView
         end
       end
 
-      def filter_and_sort_by_details(templates, details)
-        locale = details[:locale]
-        formats = details[:formats]
-        variants = details[:variants]
-        handlers = details[:handlers]
+      def filter_and_sort_by_details(templates, requested_details)
+        locale   = requested_details[:locale]
+        formats  = requested_details[:formats]
+        variants = requested_details[:variants]
+        handlers = requested_details[:handlers]
 
-        results = templates.map do |template|
+        results = templates.filter_map do |template|
           locale_match = details_match_sort_key(template.locale, locale) || next
           format_match = details_match_sort_key(template.format, formats) || next
           variant_match =
@@ -275,7 +275,6 @@ module ActionView
           [template, [locale_match, format_match, variant_match, handler_match]]
         end
 
-        results.compact!
         results.sort_by!(&:last) if results.size > 1
         results.map!(&:first)
 
