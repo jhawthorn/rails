@@ -21,25 +21,26 @@ module ActionView
     end
 
     def matches?(requested)
-      return unless details_match?(locale, requested.locale)
-      return unless details_match?(locale, requested.locale)
-      return unless details_match?(format, requested.formats)
-      return if requested.variants != :any && !details_match?(variant, requested.variants)
-      return unless details_match?(handler, requested.handlers)
+      return if locale && !requested.locale.include?(locale)
+      return if format && !requested.formats.include?(format)
+      unless requested.variants == :any
+        return if variant && !requested.variants.include?(variant)
+      end
+      return if handler && !requested.handlers.include?(handler)
 
       true
     end
 
     def sort_key_for(requested)
-      locale_match = details_match_sort_key(locale, requested.locale) || return
-      format_match = details_match_sort_key(format, requested.formats) || return
+      locale_match = details_match_sort_key(locale, requested.locale)
+      format_match = details_match_sort_key(format, requested.formats)
       variant_match =
         if requested.variants == :any
           variant ? 1 : 0
         else
-          details_match_sort_key(variant, requested.variants) || return
+          details_match_sort_key(variant, requested.variants)
         end
-      handler_match = details_match_sort_key(handler, requested.handlers) || return
+      handler_match = details_match_sort_key(handler, requested.handlers)
 
       [locale_match, format_match, variant_match, handler_match]
     end
@@ -53,10 +54,6 @@ module ActionView
     end
 
     private
-
-      def details_match?(have, want)
-        !have || want.include?(have)
-      end
 
       def details_match_sort_key(have, want)
         if have
