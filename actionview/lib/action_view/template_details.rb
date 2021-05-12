@@ -21,8 +21,8 @@ module ActionView
     end
 
     def matches?(requested)
-      return if locale && !requested.locale.include?(locale)
       return if format && !requested.formats.include?(format)
+      return if locale && !requested.locale.include?(locale)
       unless requested.variants == :any
         return if variant && !requested.variants.include?(variant)
       end
