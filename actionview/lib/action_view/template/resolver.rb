@@ -205,10 +205,11 @@ module ActionView
     private
       def _find_all(name, prefix, partial, details, key, locals)
         path = TemplatePath.build(name, prefix, partial)
-        query(path, details, details[:formats], locals, cache: !!key)
+        requested_details = TemplateDetails::Requested.new(**details)
+        query(path, requested_details, locals, cache: !!key)
       end
 
-      def query(path, details, formats, locals, cache:)
+      def query(path, requested_details, locals, cache:)
         cache = cache ? @unbound_templates : Concurrent::Map.new
 
         unbound_templates =
@@ -216,7 +217,7 @@ module ActionView
             unbound_templates_from_path(path)
           end
 
-        filter_and_sort_by_details(unbound_templates, details).map do |unbound_template|
+        filter_and_sort_by_details(unbound_templates, requested_details).map do |unbound_template|
           unbound_template.bind_locals(locals)
         end
       end
@@ -256,7 +257,6 @@ module ActionView
       end
 
       def filter_and_sort_by_details(templates, requested_details)
-        requested_details = TemplateDetails::Requested.new(**requested_details)
         filtered_templates = templates.select do |template|
           template.details.matches?(requested_details)
         end
