@@ -20,25 +20,20 @@ module ActionView
       @variant = variant
     end
 
-    def matches?(requested_details)
-      !!sort_key_for(requested_details)
+    def matches?(requested)
+      !!sort_key_for(requested)
     end
 
-    def sort_key_for(requested_details)
-      requested_locale   = requested_details.locale
-      requested_formats  = requested_details.formats
-      requested_variants = requested_details.variants
-      requested_handlers = requested_details.handlers
-
-      locale_match = details_match_sort_key(locale, requested_locale) || return
-      format_match = details_match_sort_key(format, requested_formats) || return
+    def sort_key_for(requested)
+      locale_match = details_match_sort_key(locale, requested.locale) || return
+      format_match = details_match_sort_key(format, requested.formats) || return
       variant_match =
-        if requested_variants == :any
+        if requested.variants == :any
           variant ? 1 : 0
         else
-          details_match_sort_key(variant, requested_variants) || return
+          details_match_sort_key(variant, requested.variants) || return
         end
-      handler_match = details_match_sort_key(handler, requested_handlers) || return
+      handler_match = details_match_sort_key(handler, requested.handlers) || return
 
       [locale_match, format_match, variant_match, handler_match]
     end
