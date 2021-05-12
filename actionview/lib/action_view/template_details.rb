@@ -9,6 +9,10 @@ module ActionView
       @variant = variant
     end
 
+    def matches?(requested_details)
+      !!sort_key_for(requested_details)
+    end
+
     def sort_key_for(requested_details)
       requested_locale   = requested_details[:locale]
       requested_formats  = requested_details[:formats]
@@ -37,6 +41,10 @@ module ActionView
     end
 
     private
+
+      def details_match?(have, want)
+        !have || want.include?(have)
+      end
 
       def details_match_sort_key(have, want)
         if have

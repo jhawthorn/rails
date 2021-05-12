@@ -256,16 +256,17 @@ module ActionView
       end
 
       def filter_and_sort_by_details(templates, requested_details)
-        results = templates.filter_map do |template|
-          sort_key = template.details.sort_key_for(requested_details)
-          next unless sort_key
-          [template, sort_key]
+        filtered_templates = templates.select do |template|
+          template.details.matches?(requested_details)
         end
 
-        results.sort_by!(&:last) if results.size > 1
-        results.map!(&:first)
+        if filtered_templates.count > 1
+          filtered_templates.sort_by! do |template|
+            template.details.sort_key_for(requested_details)
+          end
+        end
 
-        results
+        filtered_templates
       end
 
       # Safe glob within @path
