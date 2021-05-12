@@ -1,5 +1,16 @@
 module ActionView
   class TemplateDetails # :nodoc:
+    class Requested
+      attr_reader :locale, :handlers, :formats, :variants
+
+      def initialize(locale:, handlers:, formats:, variants:)
+        @locale = locale
+        @handlers = handlers
+        @formats = formats
+        @variants = variants
+      end
+    end
+
     attr_reader :locale, :handler, :format, :variant
 
     def initialize(locale, handler, format, variant)
@@ -14,10 +25,10 @@ module ActionView
     end
 
     def sort_key_for(requested_details)
-      requested_locale   = requested_details[:locale]
-      requested_formats  = requested_details[:formats]
-      requested_variants = requested_details[:variants]
-      requested_handlers = requested_details[:handlers]
+      requested_locale   = requested_details.locale
+      requested_formats  = requested_details.formats
+      requested_variants = requested_details.variants
+      requested_handlers = requested_details.handlers
 
       locale_match = details_match_sort_key(locale, requested_locale) || return
       format_match = details_match_sort_key(format, requested_formats) || return

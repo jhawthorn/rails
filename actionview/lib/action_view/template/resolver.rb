@@ -256,6 +256,7 @@ module ActionView
       end
 
       def filter_and_sort_by_details(templates, requested_details)
+        requested_details = TemplateDetails::Requested.new(**requested_details)
         filtered_templates = templates.select do |template|
           template.details.matches?(requested_details)
         end
