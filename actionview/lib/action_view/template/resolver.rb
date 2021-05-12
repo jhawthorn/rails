@@ -256,37 +256,16 @@ module ActionView
       end
 
       def filter_and_sort_by_details(templates, requested_details)
-        locale   = requested_details[:locale]
-        formats  = requested_details[:formats]
-        variants = requested_details[:variants]
-        handlers = requested_details[:handlers]
-
         results = templates.filter_map do |template|
-          locale_match = details_match_sort_key(template.locale, locale) || next
-          format_match = details_match_sort_key(template.format, formats) || next
-          variant_match =
-            if variants == :any
-              template.variant ? 1 : 0
-            else
-              details_match_sort_key(template.variant, variants) || next
-            end
-          handler_match = details_match_sort_key(template.handler, handlers) || next
-
-          [template, [locale_match, format_match, variant_match, handler_match]]
+          sort_key = template.details.sort_key_for(requested_details)
+          next unless sort_key
+          [template, sort_key]
         end
 
         results.sort_by!(&:last) if results.size > 1
         results.map!(&:first)
 
         results
-      end
-
-      def details_match_sort_key(have, want)
-        if have
-          want.index(have)
-        else
-          want.size
-        end
       end
 
       # Safe glob within @path
