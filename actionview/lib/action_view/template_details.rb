@@ -21,7 +21,13 @@ module ActionView
     end
 
     def matches?(requested)
-      !!sort_key_for(requested)
+      return unless details_match?(locale, requested.locale)
+      return unless details_match?(locale, requested.locale)
+      return unless details_match?(format, requested.formats)
+      return if requested.variants != :any && !details_match?(variant, requested.variants)
+      return unless details_match?(handler, requested.handlers)
+
+      true
     end
 
     def sort_key_for(requested)
