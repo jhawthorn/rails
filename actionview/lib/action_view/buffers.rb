@@ -64,4 +64,48 @@ module ActionView
       self
     end
   end
+
+  class DeferredBuffer #:nodoc:
+    def initialize
+      @array = []
+    end
+
+    def <<(value)
+      @array << [:raw, value]
+    end
+    alias :concat  :<<
+    alias :append= :<<
+
+    def safe_concat(value)
+      @array << [:safe, value]
+    end
+    alias :safe_append= :safe_concat
+
+    def stream_to(ob)
+      ob.safe_concat(to_s)
+      @array.clear
+      nil
+    end
+
+    def to_s
+      @array.map do |type, value|
+        case type
+        when :safe
+          value.to_s
+        when :raw
+          value = value.to_s
+          value = ERB::Util.h(value) unless value.html_safe?
+          value
+        end
+      end.join.html_safe
+    end
+
+    def html_safe?
+      true
+    end
+
+    def html_safe
+      self
+    end
+  end
 end

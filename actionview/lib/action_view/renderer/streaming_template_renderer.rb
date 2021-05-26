@@ -92,10 +92,11 @@ module ActionView
           # from the template, so start rendering it. If not, it means
           # the layout exited without requiring anything from the template.
           if fiber.alive?
-            content = template.render(view, locals, &yielder)
+            buffer = ActionView::DeferredBuffer.new
+            view.view_flow.append!(:layout, buffer)
 
             # Once rendering the template is done, sets its content in the :layout key.
-            view.view_flow.set(:layout, content)
+            template.render(view, locals, buffer, &yielder)
 
             # In case the layout continues yielding, we need to resume
             # the fiber until all yields are handled.
