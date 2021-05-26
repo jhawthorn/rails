@@ -34,6 +34,7 @@ class AssetTagHelperTest < ActionView::TestCase
   end
 
   class FakeResponse
+    def sending?; false; end
     def headers
       @headers ||= {}
     end
