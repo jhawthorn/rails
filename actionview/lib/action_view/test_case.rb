@@ -182,7 +182,7 @@ module ActionView
     private
       # Need to experiment if this priority is the best one: rendered => output_buffer
       def document_root_element
-        Nokogiri::HTML::Document.parse(@rendered.blank? ? @output_buffer : @rendered).root
+        Nokogiri::HTML::Document.parse(@rendered.blank? ? @output_buffer.to_s : @rendered).root
       end
 
       module Locals

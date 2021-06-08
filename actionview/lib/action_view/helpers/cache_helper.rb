@@ -249,13 +249,10 @@ module ActionView
         controller.read_fragment(name, options)
       end
 
-      def write_fragment_for(name, options)
-        pos = output_buffer.length
-        yield
-        output_safe = output_buffer.html_safe?
-        fragment = output_buffer.slice!(pos..-1)
-        if output_safe
-          self.output_buffer = output_buffer.class.new(output_buffer)
+      def write_fragment_for(name, options, &block)
+        fragment = capture(&block)
+        unless output_buffer.html_safe?
+          raise "does this ever happen?"
         end
         controller.write_fragment(name, fragment, options)
       end
