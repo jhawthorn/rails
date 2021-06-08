@@ -41,16 +41,7 @@ module ActionView
     # is not available and we're inside the layout fiber,
     # then it will begin waiting for the given key and yield.
     def get(key)
-      value = @content.key?(key) && @content[key]
-      if ActionView::DeferredBuffer === value && inside_fiber?
-        value.stream_to(@view.output_buffer)
-        saved_buffer = @view.output_buffer
-        Fiber.yield
-        @view.output_buffer = saved_buffer
-        return ""
-      end
-
-      return value if value
+      return super if @content.key?(key)
 
       if inside_fiber?
         view = @view
@@ -72,7 +63,7 @@ module ActionView
     # by providing and resuming back to the fiber,
     # if that's the key it's waiting for.
     def append!(key, value)
-      @content[key] = value
+      super
       @fiber.resume if @waiting_for == key
     end
 
