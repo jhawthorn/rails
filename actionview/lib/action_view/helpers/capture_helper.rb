@@ -204,7 +204,7 @@ module ActionView
       # Defaults to a new empty string.
       def with_output_buffer(buf = nil) #:nodoc:
         unless buf
-          if output_buffer && output_buffer.encoding
+          if output_buffer
             str = String.new(encoding: output_buffer.encoding)
             buf = ActionView::OutputBuffer.new(str)
           else

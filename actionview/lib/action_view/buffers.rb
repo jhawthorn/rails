@@ -43,6 +43,10 @@ module ActionView
       @block = block
     end
 
+    def encoding
+      Encoding.default_internal
+    end
+
     def <<(value)
       value = value.to_s
       value = ERB::Util.h(value) unless value.html_safe?
