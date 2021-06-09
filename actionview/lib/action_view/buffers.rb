@@ -123,6 +123,7 @@ module ActionView
         end
       end.join.html_safe
     end
+    alias to_str to_s
 
     def html_safe?
       true
