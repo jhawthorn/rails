@@ -206,11 +206,11 @@ class CaptureHelperTest < ActionView::TestCase
   end
 
   def test_with_output_buffer_sets_proper_encoding
-    @av.output_buffer = ActionView::OutputBuffer.new
 
     # Ensure we set the output buffer to an encoding different than the default one.
-    alt_encoding = alt_encoding(@av.output_buffer)
-    @av.output_buffer.force_encoding(alt_encoding)
+    alt_encoding = alt_encoding("")
+    str = String.new(encoding: alt_encoding)
+    @av.output_buffer = ActionView::OutputBuffer.new(str)
 
     @av.with_output_buffer do
       assert_equal alt_encoding, @av.output_buffer.encoding

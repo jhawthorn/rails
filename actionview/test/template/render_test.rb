@@ -729,7 +729,7 @@ class LazyViewRenderTest < ActiveSupport::TestCase
     with_external_encoding Encoding::ASCII_8BIT do
       result = @view.render(template: "test/utf8_magic", formats: [:html], layouts: "layouts/yield")
       assert_equal Encoding::UTF_8, result.encoding
-      assert_equal "\nРусский \nтекст\n\nUTF-8\nUTF-8\nUTF-8\n", result
+      assert_equal "\nРусский \nтекст\n\nUTF-8\nUTF-8\n", result
     end
   end
 

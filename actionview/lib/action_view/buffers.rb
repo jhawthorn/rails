@@ -66,12 +66,11 @@ module ActionView
   end
 
   class OutputBuffer #:nodoc:
-    def initialize(string=nil)
-      if string
-        @array = [[:raw, string]]
-      else
-        @array = []
-      end
+    attr_reader :encoding
+
+    def initialize(string = "")
+      @array = [[:raw, string]]
+      @encoding = string.encoding
     end
 
     def <<(value)
@@ -101,11 +100,11 @@ module ActionView
     end
 
     def empty?
-      @array.empty? || @array.all?(&:empty?)
+      @array.all? {|_,s| s.empty? }
     end
 
     def blank?
-      @array.empty? || @array.all?(&:blank?)
+      @array.all? {|_,s| s.blank? }
     end
 
     def to_s
