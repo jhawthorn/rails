@@ -249,13 +249,18 @@ module ActionView
         controller.read_fragment(name, options)
       end
 
-      def write_fragment_for(name, options)
-        pos = output_buffer.length
-        yield
-        output_safe = output_buffer.html_safe?
-        fragment = output_buffer.slice!(pos..-1)
-        if output_safe
-          self.output_buffer = output_buffer.class.new(output_buffer)
+      include CaptureHelper
+      def write_fragment_for(name, options, &block)
+        if output_buffer.is_a?(ActionView::OutputBuffer)
+          fragment = capture(&block).to_s
+        else
+          pos = output_buffer.length
+          yield
+          output_safe = output_buffer.html_safe?
+          fragment = output_buffer.slice!(pos..-1)
+          if output_safe
+            self.output_buffer = output_buffer.class.new(output_buffer)
+          end
         end
         controller.write_fragment(name, fragment, options)
       end

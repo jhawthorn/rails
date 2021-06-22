@@ -43,8 +43,12 @@ module ActionView
       def capture(*args)
         value = nil
         buffer = with_output_buffer { value = yield(*args) }
-        if (string = buffer.presence || value) && string.is_a?(String)
-          ERB::Util.html_escape string
+        if buffer.blank?
+          if value.is_a?(String)
+            ERB::Util.html_escape value
+          end
+        else
+          ERB::Util.html_escape buffer.to_s
         end
       end
 
@@ -200,9 +204,11 @@ module ActionView
       # Defaults to a new empty string.
       def with_output_buffer(buf = nil) #:nodoc:
         unless buf
-          buf = ActionView::OutputBuffer.new
-          if output_buffer && output_buffer.respond_to?(:encoding)
-            buf.force_encoding(output_buffer.encoding)
+          if output_buffer
+            str = String.new(encoding: output_buffer.encoding)
+            buf = ActionView::OutputBuffer.new(str)
+          else
+            buf = ActionView::OutputBuffer.new
           end
         end
         self.output_buffer, old_buffer = buf, output_buffer
