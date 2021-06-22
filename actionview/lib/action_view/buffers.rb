@@ -119,10 +119,6 @@ module ActionView
       nil
     end
 
-    def length
-      to_s.length
-    end
-
     def empty?
       @array.all?(&:empty?)
     end
