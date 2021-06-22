@@ -72,19 +72,39 @@ module ActionView
   class OutputBuffer #:nodoc:
     attr_reader :encoding
 
+    class RawValue
+      def initialize(value)
+        @value = value
+      end
+
+      def empty?
+        @value.empty?
+      end
+
+      def blank?
+        @value.blank?
+      end
+
+      def to_s
+        value = @value.to_s
+        value = ERB::Util.h(value) unless value.html_safe?
+        value
+      end
+    end
+
     def initialize(string = "")
-      @array = [[:raw, string]]
+      @array = [RawValue.new(string)]
       @encoding = string.encoding
     end
 
     def <<(value)
-      @array << [:raw, value]
+      @array << RawValue.new(value)
     end
     alias :concat  :<<
     alias :append= :<<
 
     def safe_concat(value)
-      @array << [:safe, value]
+      @array << value
     end
     alias :safe_append= :safe_concat
 
@@ -100,28 +120,19 @@ module ActionView
     end
 
     def length
-      @array.sum(&:length)
+      to_s.length
     end
 
     def empty?
-      @array.all? {|_,s| s.empty? }
+      @array.all?(&:empty?)
     end
 
     def blank?
-      @array.all? {|_,s| s.blank? }
+      @array.all?(&:blank?)
     end
 
     def to_s
-      @array.map do |type, value|
-        case type
-        when :safe
-          value.to_s
-        when :raw
-          value = value.to_s
-          value = ERB::Util.h(value) unless value.html_safe?
-          value
-        end
-      end.join.html_safe
+      @array.map(&:to_s).join.html_safe
     end
     alias to_str to_s
 
