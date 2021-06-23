@@ -213,6 +213,7 @@ module ActionView
         end
         self.output_buffer, old_buffer = buf, output_buffer
         yield
+        output_buffer.close
         output_buffer
       ensure
         self.output_buffer = old_buffer

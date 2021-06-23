@@ -180,15 +180,15 @@ class TranslationHelperTest < ActiveSupport::TestCase
   end
 
   def test_finds_translation_scoped_by_partial_yielding_translation_and_key
-    assert_equal "translations.templates.found_yield_block.foo: Foo", view.render(template: "translations/templates/found_yield_block").strip
+    assert_equal "translations.templates.found_yield_block.foo: Foo", view.render(template: "translations/templates/found_yield_block").to_s.strip
   end
 
   def test_finds_array_of_translations_scoped_by_partial
-    assert_equal "Foo Bar", @view.render(template: "translations/templates/array").strip
+    assert_equal "Foo Bar", @view.render(template: "translations/templates/array").to_s.strip
   end
 
   def test_default_lookup_scoped_by_partial
-    assert_equal "Foo", view.render(template: "translations/templates/default").strip
+    assert_equal "Foo", view.render(template: "translations/templates/default").to_s.strip
   end
 
   def test_missing_translation_scoped_by_partial

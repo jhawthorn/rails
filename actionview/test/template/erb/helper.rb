@@ -21,7 +21,9 @@ module ERBTest
         include routes.url_helpers
       }.new
       template = block_helper(start, inside)
-      ActionView::Template::Handlers::ERB.erb_implementation.new(template).evaluate(context)
+      ob = ActionView::Template::Handlers::ERB.erb_implementation.new(template).evaluate(context)
+      ob.close
+      ob.to_s
     end
 
     def block_helper(str, rest)

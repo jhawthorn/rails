@@ -148,10 +148,18 @@ module ActionView
     # This method is instrumented as "!render_template.action_view". Notice that
     # we use a bang in this instrumentation because you don't want to
     # consume this in production. This is only slow if it's being listened to.
-    def render(view, locals, buffer = ActionView::OutputBuffer.new, add_to_stack: true, &block)
+    def render(view, locals, parent_buffer = nil, add_to_stack: true, &block)
+      buffer = ActionView::OutputBuffer.new
+
       instrument_render_template do
         compile!(view)
-        view._run(method_name, self, locals, buffer, add_to_stack: add_to_stack, &block)
+        ret = view._run(method_name, self, locals, buffer, add_to_stack: add_to_stack, &block)
+        if parent_buffer
+        else
+          buffer.close
+          parent_buffer << buffer if parent_buffer
+          ret.to_s
+        end
       end
     rescue => e
       handle_render_error(view, e)

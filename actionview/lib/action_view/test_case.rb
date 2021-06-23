@@ -182,6 +182,8 @@ module ActionView
     private
       # Need to experiment if this priority is the best one: rendered => output_buffer
       def document_root_element
+        @output_buffer.freeze # FIXME: this isn't safe
+
         Nokogiri::HTML::Document.parse(@rendered.blank? ? @output_buffer.to_s : @rendered).root
       end
 

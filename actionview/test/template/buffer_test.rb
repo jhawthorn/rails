@@ -13,6 +13,9 @@ class BufferTest < ActionView::TestCase
 
     inner_buffer << "WORLD"
 
+    inner_buffer.close
+    outer_buffer.close
+
     assert_equal "HELLO WORLD!", outer_buffer.to_s
   end
 end

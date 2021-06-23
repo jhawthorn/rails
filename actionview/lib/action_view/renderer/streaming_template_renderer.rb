@@ -21,6 +21,8 @@ module ActionView
           @start.call(block)
         rescue Exception => exception
           log_error(exception)
+          puts exception
+          puts exception.backtrace
           block.call ActionView::Base.streaming_completion_on_exception
         end
         self

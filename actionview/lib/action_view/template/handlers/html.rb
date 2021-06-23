@@ -4,7 +4,11 @@ module ActionView
   module Template::Handlers
     class Html < Raw
       def call(template, source)
-        "ActionView::OutputBuffer.new #{super}"
+        <<~RUBY
+          buf = ActionView::OutputBuffer.new #{super}
+          buf.close
+          buf
+        RUBY
       end
     end
   end

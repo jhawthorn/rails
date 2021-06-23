@@ -127,9 +127,31 @@ module ActionView
       @array.all?(&:blank?)
     end
 
+    def close
+      @array.freeze
+      @to_s = _build_string
+    end
+
+    def freeze
+      close
+      super
+    end
+
+    def closed?
+      defined?(@to_s)
+    end
+
     def to_s
+      return @to_s if closed?
+      #ActiveSupport::Deprecation.warn("output_buffer must be closed before calling to_s")
+      raise "to_s on open output_buffer"
+      _build_string
+    end
+
+    def _build_string
       @array.map(&:to_s).join.html_safe
     end
+
     alias to_str to_s
 
     def html_safe?
