@@ -16,7 +16,7 @@ module ActionView
 
             properties[:bufvar]     ||= "@output_buffer"
             properties[:preamble]   ||= ""
-            properties[:postamble]  ||= "#{properties[:bufvar]}.to_s"
+            properties[:postamble]  ||= "#{properties[:bufvar]}"
 
             properties[:escapefunc] = ""
 
