@@ -49,6 +49,15 @@ module ActionView
       end
 
       def build_view_context_class(klass, supports_path, routes, helpers)
+        if superclass.respond_to?(:view_context_class) &&
+            supports_path? == superclass.supports_path? &&
+            _routes.equal?(superclass._routes) &&
+            _helpers.equal?(superclass._helpers)
+          # Our parent class has the same view context behaviours we do so we
+          # can reuse its view_context_class
+          return superclass.view_context_class
+        end
+
         Class.new(klass) do
           if routes
             include routes.url_helpers(supports_path)
