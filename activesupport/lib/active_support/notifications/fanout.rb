@@ -179,11 +179,11 @@ module ActiveSupport
       end
 
       def start(name, id, payload)
-        iterate_guarding_exceptions(listeners_for(name)) { |s| s.start(name, id, payload) }
+        raise "start called"
       end
 
       def finish(name, id, payload, listeners = listeners_for(name))
-        iterate_guarding_exceptions(listeners) { |s| s.finish(name, id, payload) }
+        raise "finish called"
       end
 
       def publish(name, *args)
