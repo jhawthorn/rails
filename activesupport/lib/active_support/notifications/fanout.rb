@@ -148,6 +148,28 @@ module ActiveSupport
         end
       end
 
+      class EventObjectGroup < BaseGroup
+        def start
+          @event = build_event(@name, @id, @payload)
+          @event.start!
+        end
+
+        def finish
+          @event.payload = @payload
+          @event.finish!
+
+          each do |s|
+            s.publish_event(@event)
+          end
+        end
+
+        private
+
+          def build_event(name, id, payload)
+            ActiveSupport::Notifications::Event.new name, nil, nil, id, payload
+          end
+      end
+
       class Handle
         def initialize(notifier, name, id, payload)
           @notifier = notifier
@@ -323,51 +345,20 @@ module ActiveSupport
           end
         end
 
-        class MonotonicTimed < Evented # :nodoc:
+        class MonotonicTimed < Timed # :nodoc:
           def group_class
             MonotonicTimedGroup
-          end
-
-          def publish(name, *args)
-            @delegate.call name, *args
-          end
-
-          def start(name, id, payload)
-            timestack = IsolatedExecutionState[:_timestack_monotonic] ||= []
-            timestack.push Process.clock_gettime(Process::CLOCK_MONOTONIC)
-          end
-
-          def finish(name, id, payload)
-            timestack = IsolatedExecutionState[:_timestack_monotonic]
-            started = timestack.pop
-            @delegate.call(name, started, Process.clock_gettime(Process::CLOCK_MONOTONIC), id, payload)
           end
         end
 
         class EventObject < Evented
-          def start(name, id, payload)
-            stack = IsolatedExecutionState[:_event_stack] ||= []
-            event = build_event name, id, payload
-            event.start!
-            stack.push event
-          end
-
-          def finish(name, id, payload)
-            stack = IsolatedExecutionState[:_event_stack]
-            event = stack.pop
-            event.payload = payload
-            event.finish!
-            @delegate.call event
+          def group_class
+            EventObjectGroup
           end
 
           def publish_event(event)
             @delegate.call event
           end
-
-          private
-            def build_event(name, id, payload)
-              ActiveSupport::Notifications::Event.new name, nil, nil, id, payload
-            end
         end
       end
     end
