@@ -92,9 +92,63 @@ module ActiveSupport
         end
       end
 
-      class Handle
+      class BaseGroup
         include FanoutIteration
 
+        def initialize(listeners, name, id, payload)
+          @listeners = listeners
+          @name = name
+          @id = id
+          @payload = payload
+        end
+
+        def each(&block)
+          iterate_guarding_exceptions(@listeners, &block)
+        end
+      end
+
+      class BaseTimeGroup < BaseGroup
+        def start
+          @start_time = now
+        end
+
+        def finish
+          @stop_time = now
+          each do |listener|
+            listener.publish(@name, @start_time, @stop_time, @id, @payload)
+          end
+        end
+      end
+
+      class MonotonicTimedGroup < BaseTimeGroup
+        private
+          def now
+            Process.clock_gettime(Process::CLOCK_MONOTONIC)
+          end
+      end
+
+      class TimedGroup < BaseTimeGroup
+        private
+          def now
+            Time.now
+          end
+      end
+
+      class EventedGroup < BaseGroup
+        def start
+          each do |s|
+            s.start(@name, @id, @payload)
+          end
+        end
+
+        def finish
+          each do |s|
+            s.finish(@name, @id, @payload)
+          end
+        end
+      end
+
+      class Handle
         def initialize(notifier, name, id, payload)
           @notifier = notifier
           @name = name
@@ -102,30 +156,19 @@ module ActiveSupport
           @payload = payload
 
           @listeners = @notifier.listeners_for(name)
-          @start_time = Time.now
+
+          @groups = @listeners.group_by(&:group_class)
+          @groups = @groups.map do |group_klass, grouped_listeners|
+            group_klass.new(grouped_listeners, @name, @id, @payload)
+          end
         end
 
         def start
-          iterate_guarding_exceptions(@listeners) do |s|
-            case s
-            when Subscribers::Timed
-              # nothing
-            else
-              s.start(@name, @id, @payload)
-            end
-          end
+          @groups.each(&:start)
         end
 
         def finish
-          iterate_guarding_exceptions(@listeners) do |s|
-            case s
-            when Subscribers::Timed
-              # call .publish with our saved time
-              s.publish(@name, @start_time, Time.now, @id, @payload)
-            else
-              s.finish(@name, @id, @payload)
-            end
-          end
+          @groups.each(&:finish)
         end
       end
 
@@ -235,6 +278,10 @@ module ActiveSupport
             @can_publish_event = delegate.respond_to?(:publish_event)
           end
 
+          def group_class
+            EventedGroup
+          end
+
           def publish(name, *args)
             if @can_publish
               @delegate.publish name, *args
@@ -267,23 +314,20 @@ module ActiveSupport
         end
 
         class Timed < Evented # :nodoc:
+          def group_class
+            TimedGroup
+          end
+
           def publish(name, *args)
             @delegate.call name, *args
-          end
-
-          def start(name, id, payload)
-            timestack = IsolatedExecutionState[:_timestack] ||= []
-            timestack.push Time.now
-          end
-
-          def finish(name, id, payload)
-            timestack = IsolatedExecutionState[:_timestack]
-            started = timestack.pop
-            @delegate.call(name, started, Time.now, id, payload)
           end
         end
 
         class MonotonicTimed < Evented # :nodoc:
+          def group_class
+            MonotonicTimedGroup
+          end
+
           def publish(name, *args)
             @delegate.call name, *args
           end
