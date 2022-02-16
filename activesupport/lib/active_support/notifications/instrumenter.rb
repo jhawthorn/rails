@@ -13,13 +13,31 @@ module ActiveSupport
         @notifier = notifier
       end
 
+      class LegacyHandle
+        def initialize(notifier, name, id, payload)
+          @notifier = notifier
+          @name = name
+          @id = id
+          @payload = payload
+        end
+
+        def start
+          @listener_state = @notifier.start @name, @id, @payload
+        end
+
+        def finish
+          @notifier.finish(@name, @id, @payload, @listener_state)
+        end
+      end
+
       # Given a block, instrument it by measuring the time taken to execute
       # and publish it. Without a block, simply send a message via the
       # notifier. Notice that events get sent even if an error occurs in the
       # passed-in block.
       def instrument(name, payload = {})
         # some of the listeners might have state
-        listeners_state = start name, payload
+        handle = get_handle(name, payload)
+        handle.start
         begin
           yield payload if block_given?
         rescue Exception => e
@@ -27,7 +45,15 @@ module ActiveSupport
           payload[:exception_object] = e
           raise e
         ensure
-          finish_with_state listeners_state, name, payload
+          handle.finish
+        end
+      end
+
+      def get_handle(name, payload)
+        if @notifier.respond_to?(:get_handle)
+          @notifier.get_handle(name, @id, payload)
+        else
+          LegacyHandle.new(@notifier, name, @id, payload)
         end
       end
 

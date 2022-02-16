@@ -68,6 +68,27 @@ module ActiveSupport
         end
       end
 
+      class Handle
+        def initialize(notifier, name, id, payload)
+          @notifier = notifier
+          @name = name
+          @id = id
+          @payload = payload
+        end
+
+        def start
+          @listener_state = @notifier.start @name, @id, @payload
+        end
+
+        def finish
+          @notifier.finish(@name, @id, @payload, @listener_state)
+        end
+      end
+
+      def get_handle(name, id, payload)
+        Handle.new(self, name, id, payload)
+      end
+
       def start(name, id, payload)
         iterate_guarding_exceptions(listeners_for(name)) { |s| s.start(name, id, payload) }
       end
