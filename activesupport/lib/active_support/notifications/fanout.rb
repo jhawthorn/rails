@@ -107,13 +107,24 @@ module ActiveSupport
 
         def start
           iterate_guarding_exceptions(@listeners) do |s|
-            s.start(@name, @id, @payload)
+            case s
+            when Subscribers::Timed
+              # nothing
+            else
+              s.start(@name, @id, @payload)
+            end
           end
         end
 
         def finish
           iterate_guarding_exceptions(@listeners) do |s|
-            s.finish(@name, @id, @payload)
+            case s
+            when Subscribers::Timed
+              # call .publish with our saved time
+              s.publish(@name, @start_time, Time.now, @id, @payload)
+            else
+              s.finish(@name, @id, @payload)
+            end
           end
         end
       end
