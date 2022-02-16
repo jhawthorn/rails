@@ -17,6 +17,30 @@ module ActiveSupport
       end
     end
 
+    module FanoutIteration
+      def iterate_guarding_exceptions(listeners)
+        exceptions = nil
+
+        listeners.each do |s|
+          yield s
+        rescue Exception => e
+          exceptions ||= []
+          exceptions << e
+        end
+
+        if exceptions
+          if exceptions.size == 1
+            raise exceptions.first
+          else
+            raise InstrumentationSubscriberError.new(exceptions), cause: exceptions.first
+          end
+        end
+
+        listeners
+      end
+    end
+
+
     # This is a default queue implementation that ships with Notifications.
     # It just pushes events to all registered log subscribers.
     #
@@ -69,21 +93,32 @@ module ActiveSupport
       end
 
       class Handle
+        include FanoutIteration
+
         def initialize(notifier, name, id, payload)
           @notifier = notifier
           @name = name
           @id = id
           @payload = payload
+
+          @listeners = @notifier.listeners_for(name)
+          @start_time = Time.now
         end
 
         def start
-          @listener_state = @notifier.start @name, @id, @payload
+          iterate_guarding_exceptions(@listeners) do |s|
+            s.start(@name, @id, @payload)
+          end
         end
 
         def finish
-          @notifier.finish(@name, @id, @payload, @listener_state)
+          iterate_guarding_exceptions(@listeners) do |s|
+            s.finish(@name, @id, @payload)
+          end
         end
       end
+
+      include FanoutIteration
 
       def get_handle(name, id, payload)
         Handle.new(self, name, id, payload)
@@ -103,27 +138,6 @@ module ActiveSupport
 
       def publish_event(event)
         iterate_guarding_exceptions(listeners_for(event.name)) { |s| s.publish_event(event) }
-      end
-
-      def iterate_guarding_exceptions(listeners)
-        exceptions = nil
-
-        listeners.each do |s|
-          yield s
-        rescue Exception => e
-          exceptions ||= []
-          exceptions << e
-        end
-
-        if exceptions
-          if exceptions.size == 1
-            raise exceptions.first
-          else
-            raise InstrumentationSubscriberError.new(exceptions), cause: exceptions.first
-          end
-        end
-
-        listeners
       end
 
       def listeners_for(name)
