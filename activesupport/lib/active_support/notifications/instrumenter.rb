@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "active_support/core_ext/module/delegation"
 require "securerandom"
 
 module ActiveSupport
@@ -26,6 +27,8 @@ module ActiveSupport
           def build_handle(name, id, payload)
             LegacyHandle.new(@notifier, name, id, payload)
           end
+
+          delegate :start, :finish, to: :@notifier
         end
 
         def initialize(notifier, name, id, payload)
