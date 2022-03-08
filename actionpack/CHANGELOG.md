@@ -1,3 +1,7 @@
+*   Allow Content Security Policy DSL to generate for API responses.
+
+    *Tim Wade*
+
 *   Use non-capturing group for subdomain matching in `ActionDispatch::HostAuthorization`
 
     Since we do nothing with the captured subdomain group, we can use a non-capturing group instead.
