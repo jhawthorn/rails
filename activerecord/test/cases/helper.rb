@@ -257,3 +257,11 @@ ActiveRecord::Encryption.configure \
 
 ActiveRecord::Encryption::ExtendedDeterministicQueries.install_support
 ActiveRecord::Encryption::ExtendedDeterministicUniquenessValidator.install_support
+
+Minitest.after_run do
+  #klass = ActiveRecord::Reflection::AbstractReflection
+  klass = ActiveRecord::Reflection::AssociationReflection
+  shapes = ObjectSpace.each_object(klass).map(&:instance_variables).uniq
+  common = shapes.inject(:&)
+  pp shapes.map { _1 - common }
+end

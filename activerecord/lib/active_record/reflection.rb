@@ -252,10 +252,10 @@ module ActiveRecord
       #
       # Hence this method.
       def inverse_which_updates_counter_cache
-        return @inverse_which_updates_counter_cache if defined?(@inverse_which_updates_counter_cache)
+        return @inverse_which_updates_counter_cache unless @inverse_which_updates_counter_cache.nil?
         @inverse_which_updates_counter_cache = klass.reflect_on_all_associations(:belongs_to).find do |inverse|
           inverse.counter_cache_column == counter_cache_column
-        end
+        end || false
       end
       alias inverse_updates_counter_cache? inverse_which_updates_counter_cache
 
@@ -353,6 +353,11 @@ module ActiveRecord
         @klass         = options[:anonymous_class]
         @plural_name   = active_record.pluralize_table_names ?
                             name.to_s.pluralize : name.to_s
+
+        # memoized instance variables, initialized here to improve performance
+        @counter_cache_column = nil
+        @class_name = nil
+        @inverse_which_updates_counter_cache = nil
       end
 
       def autosave=(autosave)
@@ -447,8 +452,18 @@ module ActiveRecord
 
       def initialize(name, scope, options, active_record)
         super
-        @type = -(options[:foreign_type]&.to_s || "#{options[:as]}_type") if options[:as]
-        @foreign_type = -(options[:foreign_type]&.to_s || "#{name}_type") if options[:polymorphic]
+
+        @type = (-(options[:foreign_type]&.to_s || "#{options[:as]}_type") if options[:as])
+        @foreign_type = (-(options[:foreign_type]&.to_s || "#{name}_type") if options[:polymorphic])
+
+        @parent_reflection = nil
+        @join_table = nil
+        @foreign_key = nil
+        @association_foreign_key = nil
+        @active_record_primary_key = nil
+        @association_primary_key = nil
+        @inverse_name = nil
+        @inverse_of = nil
 
         ensure_option_not_given_as_class!(:class_name)
       end
@@ -607,10 +622,10 @@ module ActiveRecord
       private
         # Attempts to find the inverse association name automatically.
         # If it cannot find a suitable inverse association name, it returns
-        # +nil+.
+        # +false+.
         def inverse_name
-          unless defined?(@inverse_name)
-            @inverse_name = options.fetch(:inverse_of) { automatic_inverse_of }
+          if @inverse_name.nil?
+            @inverse_name = options.fetch(:inverse_of) { automatic_inverse_of } || false
           end
 
           @inverse_name
