@@ -473,6 +473,22 @@ EXPECTED
     assert_equal STDOUT.to_s.to_json, STDOUT.to_json
   end
 
+  def test_minimal_json_esacping
+    # No unnecessary escaing
+    assert_equal '"<>&/"', ActiveSupport::JSON.encode("<>&/")
+
+    # Must escape "<script", "</script", and "<!--"
+    assert_equal '"\u003cscript>"', ActiveSupport::JSON.encode("<script>")
+    assert_equal '"\u003cSCRIPT>"', ActiveSupport::JSON.encode("<SCRIPT>")
+    assert_equal '"\u003csCrIpT>"', ActiveSupport::JSON.encode("<sCrIpT>")
+    assert_equal '"\u003cscript "', ActiveSupport::JSON.encode("<script ")
+    assert_equal '"\u003c/script>"', ActiveSupport::JSON.encode("</script>")
+    assert_equal '"\u003c/SCRIPT>"', ActiveSupport::JSON.encode("</SCRIPT>")
+    assert_equal '"\u003c/sCrIpT>"', ActiveSupport::JSON.encode("</sCrIpT>")
+    assert_equal '"\u003c/script "', ActiveSupport::JSON.encode("</script ")
+    assert_equal '"\u003c!--"', ActiveSupport::JSON.encode("<!--")
+  end
+
   private
     def object_keys(json_object)
       json_object[1..-2].scan(/([^{}:,\s]+):/).flatten.sort

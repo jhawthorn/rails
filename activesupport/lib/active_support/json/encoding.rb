@@ -39,10 +39,18 @@ module ActiveSupport
             value = value.as_json(options.dup)
           end
           json = stringify(jsonify(value))
-          if Encoding.escape_html_entities_in_json
-            json.gsub! ESCAPE_REGEX_WITH_HTML_ENTITIES, ESCAPED_CHARS
+          if Encoding.escape_html_entities_in_json && false
+            json.gsub!(">", '\u003e')
+            json.gsub!("<", '\u003c')
+            json.gsub!("&", '\u0026')
           else
-            json.gsub! ESCAPE_REGEX_WITHOUT_HTML_ENTITIES, ESCAPED_CHARS
+            json.gsub!("<!--", '\u003c!--')
+            json.gsub!("<script", '\u003cscript')
+            json.gsub!("</script", '\u003c/script')
+          end
+          unless json.ascii_only?
+            json.gsub!("\u2028", '\u2028')
+            json.gsub!("\u2029", '\u2029')
           end
           json
         end
@@ -86,12 +94,9 @@ module ActiveSupport
             when Numeric
               value.as_json
             when Hash
-              result = {}
-              value.each do |k, v|
-                k = k.to_s unless Symbol === k || String === k
-                result[k] = jsonify(v)
+              value.transform_values do |v|
+                jsonify(v)
               end
-              result
             when Array
               value.map { |v| jsonify(v) }
             else
