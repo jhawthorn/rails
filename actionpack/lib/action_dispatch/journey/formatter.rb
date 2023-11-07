@@ -142,12 +142,12 @@ module ActionDispatch
               h[k.to_s] = true if v
             end
 
-            hash = routes.group_by { |_, r| r.score(supplied_keys) }
+            hash = routes.group_by { |r| r.score(supplied_keys) }
 
             hash.keys.sort.reverse_each do |score|
               break if score < 0
 
-              hash[score].sort_by { |i, _| i }.each do |_, route|
+              hash[score].sort_by { |r| r.precedence }.each do |route|
                 yield route
               end
             end
@@ -193,11 +193,11 @@ module ActionDispatch
 
         def build_cache
           root = { ___routes: [] }
-          routes.routes.each_with_index do |route, i|
+          routes.routes.each do |route|
             leaf = route.required_defaults.inject(root) do |h, tuple|
               h[tuple] ||= {}
             end
-            (leaf[:___routes] ||= []) << [i, route]
+            (leaf[:___routes] ||= []) << route
           end
           root
         end
