@@ -160,10 +160,12 @@ module ActionDispatch
 
           while queue.any?
             c = queue.shift
-            routes.concat(c[:___routes]) if c.key?(:___routes)
+            routes.concat(c.routes)
 
-            options.each do |pair|
-              queue << c[pair] if c.key?(pair)
+            options.each do |k, v|
+              if n = c.get(k, v)
+                queue << n
+              end
             end
           end
 
@@ -191,14 +193,54 @@ module ActionDispatch
           missing_keys
         end
 
-        def build_cache
-          root = { ___routes: [] }
-          routes.routes.each do |route|
-            leaf = route.required_defaults.inject(root) do |h, tuple|
-              h[tuple] ||= {}
-            end
-            (leaf[:___routes] ||= []) << route
+        class CacheNode
+          attr_reader :routes
+
+          EMPTY_ARRAY = [].freeze
+          EMPTY_HASH = {}.freeze
+
+          def initialize
+            @routes = nil
+            @children = nil
           end
+
+          def finalize
+            @routes ||= EMPTY_ARRAY
+            @routes.freeze
+            @children ||= EMPTY_HASH
+            @children.each_value do |hash|
+              hash.each_value(&:finalize)
+              hash.freeze
+            end
+            @children.freeze
+          end
+
+          def get(key, value)
+            hash = @children[key]
+            return unless hash
+            hash[value]
+          end
+
+          def add_route(route)
+            (@routes ||= []) << route
+          end
+
+          def get_or_build_child(key, value)
+            hash = (@children ||= {})
+            hash = (hash[key] ||= {})
+            hash[value] ||= CacheNode.new
+          end
+        end
+
+        def build_cache
+          root = CacheNode.new
+          routes.routes.each do |route|
+            leaf = route.required_defaults.inject(root) do |h, (k, v)|
+              h.get_or_build_child(k, v)
+            end
+            leaf.add_route(route)
+          end
+          root.finalize
           root
         end
 
