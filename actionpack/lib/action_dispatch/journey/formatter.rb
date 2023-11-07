@@ -191,14 +191,6 @@ module ActionDispatch
           missing_keys
         end
 
-        def possibles(cache, options, depth = 0)
-          cache.fetch(:___routes) { [] } + options.find_all { |pair|
-            cache.key?(pair)
-          }.flat_map { |pair|
-            possibles(cache[pair], options, depth + 1)
-          }
-        end
-
         def build_cache
           root = { ___routes: [] }
           routes.routes.each_with_index do |route, i|

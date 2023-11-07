@@ -9,6 +9,10 @@ module ActionDispatch
 
       alias :conditions :constraints
 
+      def inspect
+        "#<#{self.class} #{name}>"
+      end
+
       module VerbMatchers
         VERBS = %w{ DELETE GET HEAD OPTIONS LINK PATCH POST PUT TRACE UNLINK }
         VERBS.each do |v|
