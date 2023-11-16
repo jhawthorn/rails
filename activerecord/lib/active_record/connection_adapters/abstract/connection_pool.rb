@@ -432,12 +432,8 @@ module ActiveRecord
         end
 
         stale_connections.each do |conn|
-          if conn.active?
-            conn.reset!
-            checkin conn
-          else
-            remove conn
-          end
+          conn.reset!
+          checkin conn
         end
       end
 
