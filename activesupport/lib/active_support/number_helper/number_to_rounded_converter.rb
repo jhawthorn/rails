@@ -48,8 +48,9 @@ module ActiveSupport
 
         def format_number(number)
           if strip_insignificant_zeros
-            escaped_separator = Regexp.escape(options[:separator])
-            number.sub(/(#{escaped_separator})(\d*[1-9])?0+\z/, '\1\2').sub(/#{escaped_separator}\z/, "")
+            return number unless number.include?(options[:separator])
+            number.sub(/0+\z/, "").chomp(options[:separator])
+            #number.sub(/(#{escaped_separator})(\d*[1-9])?0+\z/, '\1\2').sub(/#{escaped_separator}\z/, "")
           else
             number
           end

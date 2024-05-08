@@ -152,19 +152,21 @@ module ActiveSupport
           options
         end
 
+        EMPTY_HASH = {}.freeze
+
         def i18n_format_options
           locale = opts[:locale]
-          options = I18n.translate(:'number.format', locale: locale, default: {}).dup
+          options = I18n.translate('number.format', locale: locale, default: EMPTY_HASH).dup
 
           if namespace
-            options.merge!(I18n.translate(:"number.#{namespace}.format", locale: locale, default: {}))
+            options.merge!(I18n.translate("number.#{namespace}.format", locale: locale, default: EMPTY_HASH))
           end
 
           options
         end
 
         def translate_number_value_with_default(key, **i18n_options)
-          I18n.translate(key, default: default_value(key), scope: :number, **i18n_options)
+          I18n.translate(key, default: nil, scope: :number, **i18n_options) || default_value(key)
         end
 
         def translate_in_locale(key, **i18n_options)
