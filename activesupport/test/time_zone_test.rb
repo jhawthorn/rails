@@ -897,4 +897,10 @@ class TimeZoneTest < ActiveSupport::TestCase
     assert_equal "EST", zone.abbr(Time.utc(2000, 10, 29, 6).in_time_zone(zone))
     assert_equal "EST", zone.abbr(Time.utc(2000, 10, 29, 7).in_time_zone(zone))
   end
+
+  def test_dst
+    zone = ActiveSupport::TimeZone["America/Toronto"]
+    assert_equal false, zone.dst?(Time.utc(2000, 1))
+    assert_equal true, zone.dst?(Time.utc(2000, 6))
+  end
 end
