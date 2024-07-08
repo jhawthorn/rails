@@ -699,6 +699,8 @@ module ActionView
         def normalize_distance_of_time_argument_to_time(value)
           if value.is_a?(Numeric)
             Time.at(value)
+          elsif value.is_a?(Time)
+            value
           elsif value.respond_to?(:to_time)
             value.to_time
           else
