@@ -10,12 +10,22 @@ module Rails
 
     def prerecord(test_class, test_name)
       super
+      @prerecorded = true
       if options[:verbose]
-        io.print "%s#%s = " % [test_class.name, test_name]
+        print_test_name(test_class, test_name)
       end
     end
 
+    def print_test_name(klass, name)
+      io.print "%s#%s = " % [klass, name]
+    end
+
     def record(result)
+      if options[:verbose] && !@prerecorded
+        print_test_name(result.klass, result.name)
+      end
+      @prerecorded = nil
+
       super
 
       if options[:verbose]
