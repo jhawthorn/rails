@@ -15,10 +15,16 @@ class Time
   end
 
   def preserve_timezone # :nodoc:
-    active_support_local_zone == zone || super
+    system_local_time? || super
   end
 
   private
+    def system_local_time?
+      zone = self.zone
+      String === zone &&
+        (zone != "UTC" || active_support_local_zone == "UTC")
+    end
+
     @@active_support_local_tz = nil
 
     def active_support_local_zone
