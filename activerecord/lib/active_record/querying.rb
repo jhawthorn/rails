@@ -77,21 +77,21 @@ module ActiveRecord
         column_types = column_types.reject { |k, _| attribute_types.key?(k) }
       end
 
-      message_bus = ActiveSupport::Notifications.instrumenter
+      #message_bus = ActiveSupport::Notifications.instrumenter
 
-      payload = {
-        record_count: result_set.length,
-        class_name: name
-      }
+      #payload = {
+      #  record_count: result_set.length,
+      #  class_name: name
+      #}
 
-      message_bus.instrument("instantiation.active_record", payload) do
+      #message_bus.instrument("instantiation.active_record", payload) do
         if result_set.includes_column?(inheritance_column)
           result_set.indexed_rows.map { |record| instantiate(record, column_types, &block) }
         else
           # Instantiate a homogeneous set
           result_set.indexed_rows.map { |record| instantiate_instance_of(self, record, column_types, &block) }
         end
-      end
+      #end
     end
 
     # Returns the result of an SQL statement that should only include a COUNT(*) in the SELECT part.

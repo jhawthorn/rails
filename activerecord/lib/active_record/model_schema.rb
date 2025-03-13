@@ -420,10 +420,12 @@ module ActiveRecord
       end
 
       def attributes_builder # :nodoc:
-        @attributes_builder ||= begin
-          defaults = _default_attributes.except(*(column_names - [primary_key]))
-          ActiveModel::AttributeSet::Builder.new(attribute_types, defaults)
-        end
+        @attributes_builder ||= Ractor.make_shareable(
+          begin
+            defaults = _default_attributes.except(*(column_names - [primary_key]))
+            ActiveModel::AttributeSet::Builder.new(attribute_types, defaults)
+          end
+        )
       end
 
       def columns_hash # :nodoc:

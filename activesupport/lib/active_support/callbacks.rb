@@ -66,7 +66,7 @@ module ActiveSupport
 
     included do
       extend ActiveSupport::DescendantsTracker
-      class_attribute :__callbacks, instance_writer: false, instance_predicate: false, default: {}
+      class_attribute :__callbacks, instance_writer: false, instance_predicate: false, default: {}.freeze
     end
 
     CALLBACK_FILTER_TYPES = [:before, :after, :around].freeze
@@ -662,13 +662,15 @@ module ActiveSupport
           end
 
           def default_terminator
-            Proc.new do |target, result_lambda|
-              terminate = true
-              catch(:abort) do
-                result_lambda.call
-                terminate = false
+            nil.instance_exec do
+              Proc.new do |target, result_lambda|
+                terminate = true
+                catch(:abort) do
+                  result_lambda.call
+                  terminate = false
+                end
+                terminate
               end
-              terminate
             end
           end
       end
@@ -940,8 +942,9 @@ module ActiveSupport
             unless singleton_class.private_method_defined?(:__class_attr__callbacks, false)
               self.__callbacks = __callbacks.dup
             end
-            self.__callbacks[name.to_sym] = callbacks
-            self.__callbacks
+            new_callbacks = self.__callbacks.dup
+            new_callbacks[name.to_sym] = callbacks
+            self.__callbacks = new_callbacks.freeze
           end
       end
   end
