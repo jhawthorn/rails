@@ -52,15 +52,16 @@ class FileSystemResolverTest < ActiveSupport::TestCase
     end
   end
 
-  def test_eager_loaded_resolver_still_binds_new_locals
+  def test_eager_loaded_resolver_shares_one_template_for_any_locals
     with_file "test/hello_world.html.erb", "<%= message %>"
     resolver = ActionView::FileSystemResolver.new(tmpdir)
     resolver.eager_load_templates
 
-    a = find_all(resolver, "hello_world", "test", false, [:message])[0]
-    b = find_all(resolver, "hello_world", "test", false, [:message, :other])[0]
+    key = ActionView::TemplateDetails::Requested.new(**DETAILS)
+    a = resolver.find_all("hello_world", "test", false, DETAILS, key, [:message])[0]
+    b = resolver.find_all("hello_world", "test", false, DETAILS, key, [:message, :other])[0]
 
-    assert_not_same a, b
+    assert_same a, b
     assert_not resolver.frozen?
   end
 
@@ -79,20 +80,21 @@ class FileSystemResolverTest < ActiveSupport::TestCase
     assert_predicate templates[0], :frozen?
   end
 
-  def test_freeze_keeps_non_strict_templates_renderable
+  def test_frozen_non_strict_templates_are_renderable
     with_file "test/_card.html.erb", "<%= post %>"
     resolver = ActionView::FileSystemResolver.new(tmpdir)
-    resolver.eager_load_templates(compile_view)
+    view = compile_view
+    resolver.eager_load_templates(view)
     resolver.freeze
 
     assert_ractor_shareable resolver
 
     template = find_all(resolver, "card", "test", true, [:post])[0]
-    assert_not_predicate template, :frozen?
-    assert_equal "hello", template.render(compile_view, { post: "hello" })
+    assert_predicate template, :frozen?
+    assert_equal "hello", template.render(view, { post: "hello" })
   end
 
-  def test_frozen_non_strict_templates_are_cached_per_locals
+  def test_frozen_non_strict_templates_are_shared_across_locals
     with_file "test/_card.html.erb", "<%= post %>"
     resolver = ActionView::FileSystemResolver.new(tmpdir)
     resolver.eager_load_templates(compile_view)
@@ -104,8 +106,8 @@ class FileSystemResolverTest < ActiveSupport::TestCase
     d = find_all(resolver, "card", "test", true, [:other, :post])[0]
 
     assert_same a, b
-    assert_not_same a, c
-    assert_same c, d
+    assert_same a, c
+    assert_same a, d
   end
 
   def test_strict_locals_templates_bind_once_for_any_locals
@@ -134,11 +136,7 @@ class FileSystemResolverRactorTest < ActiveSupport::TestCase
   include ActiveSupport::Testing::Isolation
   include ActiveSupport::Testing::RactorsAssertions
 
-  # Compiling methods into FakeView from another Ractor is how frozen non-strict templates
-  # are compiled in a ractorized application, with the view class container built in the
-  # main Ractor and other Ractors compiling methods into it. This might stop working with
-  # https://bugs.ruby-lang.org/issues/22226, which would require compiling into a
-  # Ractor-local container instead.
+  # Templates are compiled into FakeView in the main Ractor, then rendered from another.
   class FakeView
     def compiled_method_container
       self.class
@@ -150,7 +148,7 @@ class FileSystemResolverRactorTest < ActiveSupport::TestCase
     end
   end
 
-  test "non-strict templates compile inside a non-main Ractor" do
+  test "precompiled non-strict templates render inside a non-main Ractor" do
     Dir.mktmpdir do |dir|
       Dir.mkdir(File.join(dir, "test"))
       File.write(File.join(dir, "test", "_card.html.erb"), "<%= post %>")
@@ -164,7 +162,7 @@ class FileSystemResolverRactorTest < ActiveSupport::TestCase
       ActiveSupport::Notifications.send(:record_subscriptions)
 
       resolver = ActionView::FileSystemResolver.new(dir)
-      resolver.eager_load_templates
+      resolver.eager_load_templates(FakeView.new)
       resolver.freeze
 
       rendered = on_ractor(resolver) do |resolver|
