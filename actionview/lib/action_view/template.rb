@@ -2,6 +2,7 @@
 
 # :markup: markdown
 require "delegate"
+require "dynamic_locals"
 
 module ActionView
   # Action View \Template
@@ -532,6 +533,11 @@ module ActionView
         source = encode!
         code = @handler.call(self, source)
 
+        unless set_strict_locals
+          known_locals = [:local_assigns, :output_buffer]
+          code = DynamicLocals.translate(code, locals_hash: :local_assigns, known_locals: known_locals)
+        end
+
         method_arguments =
           if set_strict_locals
             if set_strict_locals.include?("&")
@@ -643,20 +649,10 @@ module ActionView
         end
       end
 
-      RUBY_RESERVED_KEYWORDS = ::ActiveSupport::Delegation::RUBY_RESERVED_KEYWORDS
-      private_constant :RUBY_RESERVED_KEYWORDS
-
+      # Non-strict templates resolve locals dynamically through local_assigns (see
+      # DynamicLocals), so there is nothing to define up front.
       def locals_code
-        return "" if strict_locals?
-
-        # Only locals with valid variable names get set directly. Others will
-        # still be available in local_assigns.
-        locals = @locals - RUBY_RESERVED_KEYWORDS
-
-        locals = locals.grep(/\A(?![A-Z0-9])(?:[[:alnum:]_]|[^\0-\177])+\z/)
-
-        # Assign for the same variable is to suppress unused variable warning
-        locals.each_with_object(+"") { |key, code| code << "#{key} = local_assigns[:#{key}]; #{key} = #{key};" }
+        ""
       end
 
       def identifier_method_name
