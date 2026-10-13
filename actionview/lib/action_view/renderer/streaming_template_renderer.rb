@@ -53,7 +53,7 @@ module ActionView
       return [super.body] unless template.supports_streaming?
 
       locals ||= {}
-      layout   = find_layout(layout_name, locals.keys, [formats.first])
+      layout   = find_layout(layout_name, NO_LOCALS, [formats.first])
 
       Body.new do |buffer|
         delayed_render(buffer, template, layout, view, locals)

@@ -22,6 +22,10 @@ module ActionView
   # that new object is called in turn. This abstracts the set up and rendering
   # into a separate classes for partials and templates.
   class AbstractRenderer # :nodoc:
+    # Locals don't affect which template is found, so lookups are always made
+    # with no locals.
+    NO_LOCALS = [].freeze
+
     delegate :template_exists?, :any_templates?, :formats, to: :@lookup_context
 
     def initialize(lookup_context)

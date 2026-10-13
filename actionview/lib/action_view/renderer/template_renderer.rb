@@ -15,8 +15,6 @@ module ActionView
     private
       # Determine the template to be rendered using the given options.
       def determine_template(options, &block)
-        keys = options.has_key?(:locals) ? options[:locals].keys : []
-
         if options.key?(:body)
           Template::Text.new(options[:body])
         elsif options.key?(:plain)
@@ -40,14 +38,14 @@ module ActionView
           else
             @lookup_context.formats.first
           end
-          Template::Inline.new(options[:inline], "inline template", handler, locals: keys, format: format)
+          Template::Inline.new(options[:inline], "inline template", handler, locals: NO_LOCALS, format: format)
         elsif options.key?(:renderable)
           Template::Renderable.new(options[:renderable], &block)
         elsif options.key?(:template)
           if options[:template].respond_to?(:render)
             options[:template]
           else
-            @lookup_context.find!(options[:template], options[:prefixes], false, keys, @details)
+            @lookup_context.find!(options[:template], options[:prefixes], false, NO_LOCALS, @details)
           end
         else
           raise ArgumentError, "You invoked render but did not give any of :body, :file, :html, :inline, :partial, :plain, :renderable, or :template option."
@@ -70,7 +68,7 @@ module ActionView
       end
 
       def render_with_layout(view, template, path, locals)
-        layout  = path && find_layout(path, locals.keys, [formats.first])
+        layout  = path && find_layout(path, NO_LOCALS, [formats.first])
 
         body = if layout
           ActiveSupport::Notifications.instrument("render_layout.action_view", identifier: layout.identifier) do

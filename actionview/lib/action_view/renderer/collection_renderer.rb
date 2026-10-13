@@ -119,10 +119,10 @@ module ActionView
         SameCollectionIterator.new(collection, partial, iter_vars)
       end
 
-      template = find_template(partial, @locals.keys + iter_vars)
+      template = find_template(partial)
 
       layout = if !block && (layout = @options[:layout])
-        find_template(layout.to_s, @locals.keys + iter_vars)
+        find_template(layout.to_s)
       end
 
       render_collection(collection, context, partial, template, layout, block)
@@ -160,7 +160,7 @@ module ActionView
           count: collection.length
         ) do |payload|
           spacer = if @options.key?(:spacer_template)
-            spacer_template = find_template(@options[:spacer_template], @locals.keys)
+            spacer_template = find_template(@options[:spacer_template])
             build_rendered_template(spacer_template.render(view, @locals), spacer_template)
           else
             RenderedTemplate::EMPTY_SPACER
@@ -247,7 +247,7 @@ module ActionView
           locals[counter]   = index
           locals[iteration] = partial_iteration
 
-          _template = (cache[path] ||= (template || find_template(path, @locals.keys + [as, counter, iteration])))
+          _template = (cache[path] ||= (template || find_template(path)))
 
           content = _template.render(view, locals, implicit_locals: [counter, iteration], &block)
           content = layout.render(view, locals) { content } if layout

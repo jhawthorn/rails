@@ -294,20 +294,16 @@ module ActionView
     end
 
     def render(partial, context, block)
-      template = find_template(partial, template_keys(partial))
+      template = find_template(partial)
 
       if !block && (layout = @options[:layout])
-        layout = find_template(layout.to_s, template_keys(partial))
+        layout = find_template(layout.to_s)
       end
 
       render_partial_template(context, @locals, template, layout, block)
     end
 
     private
-      def template_keys(_)
-        @locals.keys
-      end
-
       def render_partial_template(view, locals, template, layout, block)
         ActiveSupport::Notifications.instrument(
           "render_partial.action_view",
@@ -328,9 +324,9 @@ module ActionView
       EMPTY_PREFIXES = [].freeze
       private_constant :EMPTY_PREFIXES
 
-      def find_template(path, locals)
+      def find_template(path)
         prefixes = path.include?(?/) ? EMPTY_PREFIXES : @lookup_context.prefixes
-        @lookup_context.find!(path, prefixes, true, locals, @details)
+        @lookup_context.find!(path, prefixes, true, NO_LOCALS, @details)
       end
   end
 end
