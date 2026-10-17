@@ -138,7 +138,12 @@ module ActionView
         app.config.action_view.cache_template_loading
       end
 
-      unless enable_caching
+      if enable_caching
+        # Templates won't change, so compile all of them now rather than on
+        # the first request that renders each one. Application code has been
+        # eager loaded at this point, so every view path is registered.
+        ActionView::PathRegistry.eager_load_templates! if app.config.eager_load
+      else
         view_reloader = ActionView::CacheExpiry::ViewReloader.create(watcher: app.config.file_watcher)
 
         app.reloaders << view_reloader

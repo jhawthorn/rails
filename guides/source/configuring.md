@@ -367,7 +367,7 @@ NOTE: Nokogiri's HTML5 parser is not supported on JRuby, so on JRuby platforms R
 
 #### `config.eager_load`
 
-When `true`, eager loads all registered `config.eager_load_namespaces`. This includes your application, engines, Rails frameworks, and any other registered namespace.
+When `true`, eager loads all registered `config.eager_load_namespaces`. This includes your application, engines, Rails frameworks, and any other registered namespace. When template caching is enabled (see [`config.action_view.cache_template_loading`](#config-action-view-cache-template-loading)), every view template is also compiled during boot.
 
 #### `config.eager_load_namespaces`
 

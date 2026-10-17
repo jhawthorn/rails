@@ -150,5 +150,73 @@ module ApplicationTests
         nodes.first.text,
       )
     end
+
+    test "templates are compiled at boot when eager loading" do
+      app_file "app/views/pages/show.html.erb", "<%= greeting %>"
+
+      app("production")
+
+      template = compiled_template_for("pages/show")
+      assert_includes ActionView::LookupContext.view_context_class.instance_methods, template.method_name.to_sym
+    end
+
+    test "templates compiled at boot render from any controller" do
+      app_file "config/routes.rb", <<-RUBY
+        Rails.application.routes.draw do
+          get 'pages/:id', to: 'pages#show'
+        end
+      RUBY
+
+      app_file "app/controllers/pages_controller.rb", <<-RUBY
+        class PagesController < ApplicationController
+          layout false
+
+          def show
+            render template: "pages/show", locals: { greeting: "Hello" }
+          end
+        end
+      RUBY
+
+      app_file "app/views/pages/show.html.erb", "<%= greeting %> <%= params[:id] %>"
+
+      app("production")
+      template = compiled_template_for("pages/show")
+
+      get("/pages/foo", {}, "HTTPS" => "on")
+      assert_equal 200, last_response.status
+      assert_equal "Hello foo", last_response.body.strip
+      assert_same template, compiled_template_for("pages/show")
+    end
+
+    test "templates are not compiled at boot without eager loading" do
+      app_file "app/views/pages/show.html.erb", "<%= greeting %>"
+
+      app("development")
+
+      assert_nil compiled_template_for("pages/show")
+    end
+
+    test "templates are not compiled at boot when template caching is disabled" do
+      add_to_env_config "production", "config.action_view.cache_template_loading = false"
+      app_file "app/views/pages/show.html.erb", "<%= greeting %>"
+
+      app("production")
+
+      assert_nil compiled_template_for("pages/show")
+    end
+
+    test "a template that fails to compile fails the boot when eager loading" do
+      app_file "app/views/pages/show.html.erb", "<%= foo( %>"
+
+      error = assert_raises(ActionView::SyntaxErrorInTemplate) { app("production") }
+      assert_match "app/views/pages/show.html.erb", error.message
+    end
+
+    private
+      def compiled_template_for(virtual_path)
+        ActionView::PathRegistry.all_file_system_resolvers.flat_map(&:built_templates).find do |template|
+          template.virtual_path == virtual_path
+        end
+      end
   end
 end

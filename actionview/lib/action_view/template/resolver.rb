@@ -112,11 +112,19 @@ module ActionView
       super
     end
 
+    # Populates the template cache with every template under this path, and
+    # compiles each of them when given a +view+ to compile into. Templates
+    # already in the cache, whether from an earlier call or from a lookup, are
+    # kept, so this can be called more than once.
     def eager_load_templates(view = nil)
-      template_glob("**/*").each do |file|
-        unbound = build_unbound_template(file)
-        (@unbound_templates[unbound.virtual_path] ||= []) << unbound
-        unbound.bind_locals([]).send(:compile!, view) if view
+      all_unbound_templates.group_by(&:virtual_path).each do |virtual_path, unbound_templates|
+        @unbound_templates.compute_if_absent(virtual_path) { unbound_templates }
+      end
+
+      if view
+        @unbound_templates.each_value do |unbound_templates|
+          unbound_templates.each { |unbound| unbound.bind_locals.send(:compile!, view) }
+        end
       end
     end
 

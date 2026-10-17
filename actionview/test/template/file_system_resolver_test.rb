@@ -52,6 +52,37 @@ class FileSystemResolverTest < ActiveSupport::TestCase
     end
   end
 
+  def test_eager_load_templates_twice_keeps_one_template_per_file
+    with_file "test/hello_world.html.erb", "Hello!"
+    view = compile_view
+    resolver = ActionView::FileSystemResolver.new(tmpdir)
+
+    resolver.eager_load_templates(view)
+    assert_no_difference -> { view.compiled_method_container.instance_methods.size } do
+      resolver.eager_load_templates(view)
+    end
+
+    key = ActionView::TemplateDetails::Requested.new(**DETAILS)
+    templates = resolver.find_all("hello_world", "test", false, DETAILS, key)
+    assert_equal 1, templates.size
+    assert_equal templates, resolver.built_templates
+  end
+
+  def test_eager_load_templates_keeps_and_compiles_templates_already_looked_up
+    with_file "test/hello_world.html.erb", "Hello!"
+    view = compile_view
+    resolver = ActionView::FileSystemResolver.new(tmpdir)
+    key = ActionView::TemplateDetails::Requested.new(**DETAILS)
+    template = resolver.find_all("hello_world", "test", false, DETAILS, key)[0]
+
+    assert_difference -> { view.compiled_method_container.instance_methods.size }, 1 do
+      resolver.eager_load_templates(view)
+    end
+
+    assert_same template, resolver.find_all("hello_world", "test", false, DETAILS, key)[0]
+    assert_equal [template], resolver.built_templates
+  end
+
   def test_eager_loaded_resolver_shares_one_template_for_any_locals
     with_file "test/hello_world.html.erb", "<%= message %>"
     resolver = ActionView::FileSystemResolver.new(tmpdir)

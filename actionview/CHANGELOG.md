@@ -1,3 +1,17 @@
+*   Compile every template at boot when eager loading.
+
+    Templates that don't declare strict locals now read their locals from
+    `local_assigns` (rewritten at compile time by the `dynamic_locals` gem)
+    instead of being compiled once per set of local names. So a template no
+    longer has to wait for its first render to know how it will be compiled.
+
+    With `config.eager_load` on and template caching enabled, Action View
+    loads and compiles every template in the application's view paths during
+    boot. Requests no longer compile templates, and a template with a syntax
+    error now fails the boot instead of the first request that renders it.
+
+    *John Hawthorn*
+
 *   Fix the debug page for errors raised in view templates on Ruby 4.1.
 
     Ruby 4.1 builds prism into the interpreter as `Ruby::Prism`, and
