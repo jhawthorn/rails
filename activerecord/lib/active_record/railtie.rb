@@ -460,7 +460,12 @@ To keep using the current cache store, you can turn off cache versioning entirel
 
     initializer "active_record.ractorize" do
       ActiveSupport.on_load(:before_ractorize) do
-        ActiveRecord::Base.descendants.each(&:make_reflections_shareable!)
+        models = ActiveRecord::Base.descendants
+        models.each(&:make_reflections_shareable!)
+        # Attribute methods are generated lazily under a Monitor, which non-main
+        # Ractors can't use, so generate them up front. Models whose table
+        # doesn't exist (yet) are skipped.
+        models.reject(&:abstract_class?).select(&:table_exists?).each(&:define_attribute_methods)
       end
     end
 

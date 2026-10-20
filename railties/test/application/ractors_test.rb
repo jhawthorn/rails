@@ -321,6 +321,32 @@ if RUBY_VERSION >= "4.0" && ENV["RACK"] == "head"
         assert_equal "Comment", on_ractor { Post.reflect_on_association(:comment).klass.name }
       end
 
+      test "ractorize! generates model attribute methods before a non-main Ractor needs them" do
+        app_file "app/models/post.rb", <<~RUBY
+          class Post < ActiveRecord::Base
+          end
+        RUBY
+        app_file "config/initializers/active_record.rb", <<~RUBY
+          ActiveRecord::Base.establish_connection(adapter: "sqlite3", database: ":memory:")
+          ActiveRecord::Migration.verbose = false
+          ActiveRecord::Schema.define(version: 1) do
+            create_table :posts do |t|
+              t.string :title
+            end
+          end
+          ActiveRecord::Base.schema_cache.add("posts")
+        RUBY
+
+        app "production"
+
+        assert_not_predicate Post, :attribute_methods_generated?
+
+        ractorize!
+
+        assert_predicate Post, :attribute_methods_generated?
+        assert_equal "Hello", on_ractor { Post.new(title: "Hello").title }
+      end
+
       private
         def ractorize!
           @original_experimental_warning = Warning[:experimental]
