@@ -36,13 +36,17 @@ module ActiveSupport
       # Also allow configuration here so people can use this to build a rotation
       # scheme when switching the digest class.
       @hash_digest_class = options[:hash_digest_class] || self.class.hash_digest_class
+      # Pass the digest by name: OpenSSL::PKCS5.pbkdf2_hmac is defined with
+      # `define_method`, and calling it from a non-main Ractor raises when it's
+      # given a Digest object.
+      @hash_digest_name = @hash_digest_class.new.name
     end
 
     # Returns a derived key suitable for use.  The default `key_size` is chosen
     # to be compatible with the default settings of ActiveSupport::MessageVerifier.
     # i.e. `OpenSSL::Digest::SHA1#block_length`
     def generate_key(salt, key_size = 64)
-      OpenSSL::PKCS5.pbkdf2_hmac(@secret, salt, @iterations, key_size, @hash_digest_class.new)
+      OpenSSL::PKCS5.pbkdf2_hmac(@secret, salt, @iterations, key_size, @hash_digest_name)
     end
 
     ActiveSupport::InspectBackport.apply(self)
