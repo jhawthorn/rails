@@ -126,7 +126,8 @@ module ActiveSupport
       end
 
       def self.i18n_format_key # :nodoc:
-        @i18n_format_key ||= :"number.#{namespace}.format"
+        # Not memoized: class-level instance variables can't be set from non-main Ractors.
+        :"number.#{namespace}.format"
       end
 
       def initialize(number, options)

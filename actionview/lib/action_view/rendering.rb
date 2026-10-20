@@ -16,6 +16,13 @@ module ActionView
       @lookup_context = lookup_context
     end
 
+    # I18n::Config keeps these in class variables, which non-main Ractors can't
+    # read, so defer to the original config rather than inheriting them.
+    delegate :backend, :default_locale, :available_locales, :available_locales_set,
+      :available_locales_initialized?, :default_separator, :exception_handler,
+      :missing_interpolation_argument_handler, :load_path, :enforce_available_locales,
+      :interpolation_patterns, to: :@original_config
+
     def locale
       @original_config.locale
     end

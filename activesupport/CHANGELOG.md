@@ -1,3 +1,12 @@
+*   Make I18n, `ActiveSupport::KeyGenerator`, `LoggerSilence` and the number helpers work from non-main Ractors.
+
+    `Rails.application.ractorize!` now snapshots the I18n configuration,
+    translations and locale fallbacks into shareable objects, `KeyGenerator`
+    passes the digest to `OpenSSL::PKCS5.pbkdf2_hmac` by name, and
+    `LoggerSilence.silencer` is a `class_attribute`.
+
+    *hawthbot*
+
 *   Skip building `ActiveSupport::EventReporter` events that no subscriber would consume.
 
     Subscribers can define `consumes?(name)` to say whether they would act on an

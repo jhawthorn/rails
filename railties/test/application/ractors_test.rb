@@ -220,6 +220,40 @@ if RUBY_VERSION >= "4.0" && ENV["RACK"] == "head"
         assert_equal "Hello, worker", on_ractor { HelloJob.perform_now("worker") }
       end
 
+      test "I18n translates, localizes and falls back from a non-main Ractor" do
+        add_to_env_config "production", "config.i18n.fallbacks = true"
+        app_file "config/locales/greetings.en.yml", <<~YAML
+          en:
+            greeting: "Hello, %{name}"
+        YAML
+
+        app "production"
+
+        ractorize!
+
+        assert_equal "Hello, Ractor", on_ractor { I18n.t("greeting", name: "Ractor") }
+        assert_equal "October 20, 2026", on_ractor { I18n.l(Date.new(2026, 10, 20), format: :long) }
+        assert_equal "translation missing: en.nope", on_ractor { I18n.t("nope", default: "translation missing: en.nope") }
+        assert_equal [:en], on_ractor { I18n.fallbacks[:en] }
+      end
+
+      test "key generators derive keys from a non-main Ractor" do
+        app "production"
+
+        ractorize!
+
+        expected = Rails.application.key_generator.generate_key("salt")
+        assert_equal expected, on_ractor { Rails.application.key_generator.generate_key("salt") }
+      end
+
+      test "silencing a broadcast logger works from a non-main Ractor" do
+        app "production"
+
+        ractorize!
+
+        assert_equal :done, on_ractor { ActiveSupport::BroadcastLogger.new.silence { :done } }
+      end
+
       test "error reporting works after the application is ractorized" do
         app "production"
 

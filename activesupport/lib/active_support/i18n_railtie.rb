@@ -33,6 +33,13 @@ module I18n
 
     @i18n_inited = false
 
+    initializer "i18n.ractorize" do
+      ActiveSupport.on_load(:before_ractorize) do
+        require "active_support/i18n_ractors"
+        ActiveSupport::I18nRactors.apply!
+      end
+    end
+
     # Setup i18n configuration.
     def self.initialize_i18n(app)
       return if @i18n_inited
