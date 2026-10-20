@@ -11,7 +11,7 @@ module ActiveSupport
     extend ActiveSupport::Concern
 
     included do
-      class_attribute :silencer, default: true
+      class_attribute :silencer, default: true, instance_writer: false
       include ActiveSupport::LoggerThreadSafeLevel
     end
 
