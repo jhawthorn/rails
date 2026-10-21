@@ -36,6 +36,15 @@ module ActiveRecord
       ActiveRecord.action_on_strict_loading_violation = old_action
     end
 
+    def test_sql_does_not_render_binds_when_nothing_consumes_the_event
+      subscriber = ActiveRecord::StructuredEventSubscriber.new
+      event = Event.new(0.9, sql: "SELECT 1", name: "Developer Load", binds: [Object.new], type_casted_binds: -> { flunk "binds were type cast" })
+
+      ActiveSupport.event_reporter.stub(:emitting?, false) do
+        assert_nil subscriber.sql(event)
+      end
+    end
+
     def test_schema_statements_are_ignored
       subscriber = ActiveRecord::StructuredEventSubscriber.new
 

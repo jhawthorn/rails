@@ -7,6 +7,8 @@ module ActiveRecord
     IGNORE_PAYLOAD_NAMES = ["SCHEMA", "EXPLAIN"].freeze
 
     def strict_loading_violation(event)
+      return unless emitting?("active_record.strict_loading_violation")
+
       owner = event.payload[:owner]
       reflection = event.payload[:reflection]
 
@@ -22,6 +24,7 @@ module ActiveRecord
       payload = event.payload
 
       return if IGNORE_PAYLOAD_NAMES.include?(payload[:name])
+      return unless emitting?("active_record.sql")
 
       binds = nil
 
