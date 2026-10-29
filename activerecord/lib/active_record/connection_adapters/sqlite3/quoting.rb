@@ -7,9 +7,6 @@ module ActiveRecord
       module Quoting # :nodoc:
         extend ActiveSupport::Concern
 
-        QUOTED_COLUMN_NAMES = Concurrent::Map.new # :nodoc:
-        QUOTED_TABLE_NAMES = Concurrent::Map.new # :nodoc:
-
         module ClassMethods # :nodoc:
           def column_name_matcher
             /
@@ -42,13 +39,23 @@ module ActiveRecord
             /ix
           end
 
+          # Quoted names are cached per Ractor, since a shared cache would have to be mutable.
           def quote_column_name(name)
-            QUOTED_COLUMN_NAMES[name] ||= %Q("#{name.to_s.gsub('"', '""')}").freeze
+            quoted_column_names[name] ||= %Q("#{name.to_s.gsub('"', '""')}").freeze
           end
 
           def quote_table_name(name)
-            QUOTED_TABLE_NAMES[name] ||= %Q("#{name.to_s.gsub('"', '""').gsub(".", "\".\"")}").freeze
+            quoted_table_names[name] ||= %Q("#{name.to_s.gsub('"', '""').gsub(".", "\".\"")}").freeze
           end
+
+          private
+            def quoted_column_names
+              ActiveSupport::Ractors.store_if_absent(:active_record_sqlite3_quoted_column_names) { Concurrent::Map.new }
+            end
+
+            def quoted_table_names
+              ActiveSupport::Ractors.store_if_absent(:active_record_sqlite3_quoted_table_names) { Concurrent::Map.new }
+            end
         end
 
         def quote(value) # :nodoc:

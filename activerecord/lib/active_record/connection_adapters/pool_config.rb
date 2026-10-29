@@ -13,23 +13,29 @@ module ActiveRecord
         @schema_reflection ||= SchemaReflection.new(db_config.lazy_schema_cache_path)
       end
 
-      INSTANCES = ObjectSpace::WeakMap.new
-      private_constant :INSTANCES
-
       @next_pool_token = 0
       @pool_token_lock = Mutex.new
 
       class << self
         def next_pool_token
-          @pool_token_lock.synchronize { @next_pool_token += 1 }
+          if ActiveSupport::Ractors.main?
+            @pool_token_lock.synchronize { @next_pool_token += 1 }
+          else
+            ActiveSupport::Ractors[:active_record_pool_token] = (ActiveSupport::Ractors[:active_record_pool_token] || 0) + 1
+          end
         end
 
         def discard_pools!
-          INSTANCES.each_key(&:discard_pool!)
+          instances.each_key(&:discard_pool!)
         end
 
         def disconnect_all!
-          INSTANCES.each_key { |c| c.disconnect!(automatic_reconnect: true) }
+          instances.each_key { |c| c.disconnect!(automatic_reconnect: true) }
+        end
+
+        # Every Ractor tracks only the pool configs it created itself.
+        def instances # :nodoc:
+          ActiveSupport::Ractors.store_if_absent(:active_record_pool_config_instances) { ObjectSpace::WeakMap.new }
         end
       end
 
@@ -42,7 +48,7 @@ module ActiveRecord
         @shard = shard
         @pool = nil
         @pool_token = nil
-        INSTANCES[self] = self
+        self.class.instances[self] = self
       end
 
       def server_version(connection)
@@ -83,6 +89,7 @@ module ActiveRecord
         spec = {
           db_config: db_config,
           connection_name: connection_descriptor.name.to_s.freeze,
+          primary: connection_descriptor.primary_class?,
           role: role,
           shard: shard,
           pool_token: pool_token,

@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 # :markup: markdown
-require "weakref"
-
 module ActiveRecord
   module ConnectionAdapters
     class ConnectionPool
@@ -42,50 +40,49 @@ module ActiveRecord
           @frequency = frequency
         end
 
-        @mutex = Mutex.new
-        @pools = {}
-        @threads = {}
+        # Reaper bookkeeping, one per Ractor: a pool is only ever reaped by the
+        # Ractor that owns it.
+        State = Struct.new(:mutex, :pools, :threads)
 
         class << self
+          def state # :nodoc:
+            ActiveSupport::Ractors.store_if_absent(:active_record_reaper_state) { State.new(Mutex.new, {}, {}) }
+          end
+
           def register_pool(pool, frequency) # :nodoc:
-            @mutex.synchronize do
-              unless @threads[frequency]&.alive?
-                @threads[frequency] = spawn_thread(frequency)
+            state = self.state
+            state.mutex.synchronize do
+              unless state.threads[frequency]&.alive?
+                state.threads[frequency] = spawn_thread(frequency, state)
               end
-              @pools[frequency] ||= []
-              @pools[frequency] << WeakRef.new(pool)
+              (state.pools[frequency] ||= ObjectSpace::WeakMap.new)[pool] = true
             end
           end
 
           def discard_pool(pool) # :nodoc:
-            @mutex.synchronize do
-              @pools.each do |frequency, refs|
-                refs.reject! do |ref|
-                  ref.__getobj__ == pool
-                rescue WeakRef::RefError
-                  true
-                end
+            state = self.state
+            state.mutex.synchronize do
+              state.pools.each do |frequency, refs|
+                refs.delete(pool)
 
-                if refs.empty?
-                  @pools.delete(frequency)
-                  @threads.delete(frequency)&.tap { |t| t.kill; t.join }
+                if refs.size.zero?
+                  state.pools.delete(frequency)
+                  state.threads.delete(frequency)&.tap { |t| t.kill; t.join }
                 end
               end
             end
           end
 
           def pools(refs = nil) # :nodoc:
-            refs ||= @mutex.synchronize { @pools.values.flatten(1) }
+            refs ||= state.mutex.synchronize { state.pools.values.flat_map(&:keys) }
+            refs = refs.keys if refs.is_a?(ObjectSpace::WeakMap)
 
-            refs.filter_map do |ref|
-              ref.__getobj__ if ref.weakref_alive?
-            rescue WeakRef::RefError
-            end.select(&:maintainable?)
+            refs.select(&:maintainable?)
           end
 
           private
-            def spawn_thread(frequency)
-              Thread.new(frequency) do |t|
+            def spawn_thread(frequency, state)
+              Thread.new(frequency, state) do |t, state|
                 # Advise multi-threaded app servers to ignore this thread for
                 # the purposes of fork safety warnings
                 Thread.current.thread_variable_set(:fork_safe, true)
@@ -96,17 +93,16 @@ module ActiveRecord
 
                   refs = nil
 
-                  @mutex.synchronize do
-                    refs = @pools[frequency]
+                  state.mutex.synchronize do
+                    refs = state.pools[frequency]
 
-                    refs.select! do |pool|
-                      pool.weakref_alive? && !pool.discarded?
-                    rescue WeakRef::RefError
+                    refs.keys.each do |pool|
+                      refs.delete(pool) if pool.discarded?
                     end
 
-                    if refs.empty?
-                      @pools.delete(frequency)
-                      @threads.delete(frequency)
+                    if refs.size.zero?
+                      state.pools.delete(frequency)
+                      state.threads.delete(frequency)
                       running = false
                     end
                   end

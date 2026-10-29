@@ -16,6 +16,8 @@ module ActiveRecord
       self.use_transactional_tests = false
 
       setup do
+        # These tests exercise the proxy, which SQLite would otherwise skip.
+        RactorConnectionHandler.local_connections = false
         create_widgets_table
       end
 

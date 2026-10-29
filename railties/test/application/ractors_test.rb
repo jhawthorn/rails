@@ -347,6 +347,51 @@ if RUBY_VERSION >= "4.0" && ENV["RACK"] == "head"
         assert_equal "Hello", on_ractor { Post.new(title: "Hello").title }
       end
 
+      test "a non-main Ractor queries SQLite through a connection pool of its own" do
+        require "sqlite3"
+        skip "requires a Ractor safe sqlite3 gem" unless SQLite3.respond_to?(:ractor_safe?) && SQLite3.ractor_safe?
+
+        app_file "app/models/post.rb", <<~RUBY
+          class Post < ActiveRecord::Base
+          end
+        RUBY
+        app_file "config/initializers/active_record.rb", <<~RUBY
+          ActiveRecord::Base.establish_connection(adapter: "sqlite3", database: "\#{Rails.root}/db/ractor.sqlite3")
+          ActiveRecord::Migration.verbose = false
+          ActiveRecord::Schema.define(version: 1) do
+            create_table :posts do |t|
+              t.string :title
+            end
+          end
+          ActiveRecord::Base.schema_cache.add("posts")
+        RUBY
+
+        app "production"
+
+        ractorize!
+
+        pool_class, connection_class = on_ractor do
+          Post.with_connection { |connection| [Post.connection_pool.class, connection.class] }
+        end
+        assert_equal ActiveRecord::ConnectionAdapters::ConnectionPool, pool_class
+        assert_equal ActiveRecord::ConnectionAdapters::SQLite3Adapter, connection_class
+
+        id = on_ractor { Post.create!(title: "Hello").id }
+        assert_equal "Hello", Post.find(id).title
+        assert_equal ["Hello"], on_ractor { Post.where(id: id).pluck(:title) }
+
+        rolled_back = on_ractor do
+          Post.transaction do
+            Post.create!(title: "Rolled back")
+            raise ActiveRecord::Rollback
+          end
+          Post.where(title: "Rolled back").exists?
+        end
+        assert_not rolled_back
+
+        assert_not on_ractor { Post.connection_pool.active_connection? }
+      end
+
       private
         def ractorize!
           @original_experimental_warning = Warning[:experimental]

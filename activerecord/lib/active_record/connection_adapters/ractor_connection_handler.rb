@@ -19,6 +19,38 @@ module ActiveRecord
         ActiveSupport::Ractors[:active_record_ractor_connection_handler_instance] ||= new
       end
 
+      # Set to false to proxy every connection to the main Ractor, even when the
+      # driver could be used from the worker Ractor itself.
+      @local_connections = true
+
+      class << self
+        attr_accessor :local_connections # :nodoc:
+      end
+
+      # Whether connections for this config can be opened by the Ractor that
+      # uses them, rather than proxied to the main Ractor. An in-memory database
+      # only exists inside the connection that created it, so it must be shared.
+      def self.local_connections?(db_config) # :nodoc:
+        local_connections && !ActiveSupport::Ractors.main? &&
+          db_config.adapter == "sqlite3" &&
+          defined?(::SQLite3) && ::SQLite3.respond_to?(:ractor_safe?) && ::SQLite3.ractor_safe? &&
+          db_config.database.to_s != ":memory:" && !db_config.database.to_s.include?("mode=memory")
+      end
+
+      # Pool for a spec published by the main Ractor. Where the adapter's driver
+      # is Ractor safe this Ractor owns a real ConnectionPool of its own; otherwise
+      # it gets a stand-in forwarding to the main Ractor's pool.
+      def pool_for_spec(spec)
+        return ProxyConnectionPool.for_spec(spec) unless self.class.local_connections?(spec.fetch(:db_config))
+
+        pools = ActiveSupport::Ractors.store_if_absent(:active_record_ractor_local_pools) { Concurrent::Map.new }
+        key = [spec.fetch(:connection_name), spec.fetch(:role), spec.fetch(:shard), spec.fetch(:pool_token)]
+        pools.compute_if_absent(key) do
+          descriptor = ConnectionHandler::ConnectionDescriptor.new(spec.fetch(:connection_name), spec.fetch(:primary))
+          PoolConfig.new(descriptor, spec.fetch(:db_config), spec.fetch(:role), spec.fetch(:shard)).pool
+        end
+      end
+
       # Blocks handed to main_operation may only capture single-assignment locals
       def connection_pool_list(role = nil)
         connection_role = role
@@ -26,7 +58,7 @@ module ActiveRecord
           specs = main_connection_handler.connection_pool_list(connection_role).map { |pool| pool.pool_config.pool_spec }
           ActiveSupport::Ractors.make_shareable(specs, copy: false)
         end
-        pool_specs.map { |pool_spec| ProxyConnectionPool.for_spec(pool_spec) }
+        pool_specs.map { |pool_spec| pool_for_spec(pool_spec) }
       end
       alias :connection_pools :connection_pool_list
 
@@ -50,6 +82,13 @@ module ActiveRecord
         connection_shard = shard
         strict_lookup = strict
 
+        # A Ractor's own pools are reused without asking the main Ractor, which is only
+        # consulted the first time a name, role and shard are seen. Pools established
+        # on the main Ractor afterwards are not noticed until retrieved_pools is cleared.
+        cache_key = [shareable_connection_name, connection_role, connection_shard]
+        cached_pool = retrieved_pools[cache_key]
+        return cached_pool if cached_pool
+
         pool_spec = main_operation do
           pool = main_connection_handler.retrieve_connection_pool(
             shareable_connection_name,
@@ -59,7 +98,9 @@ module ActiveRecord
           )
           pool && pool.pool_config.pool_spec
         end
-        pool_spec && ProxyConnectionPool.for_spec(pool_spec)
+        retrieved = pool_spec && pool_for_spec(pool_spec)
+        retrieved_pools[cache_key] = retrieved if retrieved.is_a?(ConnectionPool)
+        retrieved
       end
 
       def connected?(connection_name, role: ActiveRecord::Base.current_role, shard: ActiveRecord::Base.current_shard)
@@ -104,6 +145,8 @@ module ActiveRecord
         connection_shard = shard
         clobber_existing = clobber
 
+        retrieved_pools.clear
+
         pool_spec = main_operation do
           pool = main_connection_handler.establish_connection(
             db_config.dup,
@@ -115,10 +158,11 @@ module ActiveRecord
           pool.pool_config.pool_spec
         end
 
-        ProxyConnectionPool.for_spec(pool_spec)
+        pool_for_spec(pool_spec)
       end
 
       def remove_connection_pool(connection_name, role: ActiveRecord::Base.current_role, shard: ActiveRecord::Base.current_shard)
+        retrieved_pools.clear
         shareable_connection_name = ActiveSupport::Ractors.make_shareable(connection_name.to_s)
         connection_role = role
         connection_shard = shard
@@ -135,8 +179,12 @@ module ActiveRecord
       end
 
       private
+        def retrieved_pools
+          ActiveSupport::Ractors.store_if_absent(:active_record_ractor_retrieved_pools) { Concurrent::Map.new }
+        end
+
         def manages?(pool, role)
-          pool.is_a?(ProxyConnectionPool) && (role.nil? || pool.role == role)
+          (pool.is_a?(ProxyConnectionPool) || pool.is_a?(ConnectionPool)) && (role.nil? || pool.role == role)
         end
     end
   end

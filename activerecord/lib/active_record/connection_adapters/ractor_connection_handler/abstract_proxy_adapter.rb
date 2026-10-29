@@ -287,11 +287,11 @@ module ActiveRecord
           # Local casting must match the concrete adapter (e.g. SQLite3's integer limit).
           def type_map
             if key = extended_type_map_key
-              adapter_class::EXTENDED_TYPE_MAPS.compute_if_absent(key) do
+              adapter_class.extended_type_maps.compute_if_absent(key) do
                 adapter_class.extended_type_map(**key)
               end
             else
-              adapter_class::TYPE_MAP
+              adapter_class.type_map
             end
           end
 

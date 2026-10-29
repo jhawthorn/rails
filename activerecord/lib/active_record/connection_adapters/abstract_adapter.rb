@@ -1056,8 +1056,24 @@ module ActiveRecord
           end
         end
 
+        # The type map is built from procs and mutated as it caches lookups, so it can't
+        # be shared with other Ractors. Each worker Ractor builds its own on first use.
+        def type_map # :nodoc:
+          return self::TYPE_MAP if ActiveSupport::Ractors.main?
+
+          maps = ActiveSupport::Ractors.store_if_absent(:active_record_adapter_type_maps) { {} }
+          maps[self] ||= Type::TypeMap.new.tap { |m| initialize_type_map(m) }
+        end
+
+        def extended_type_maps # :nodoc:
+          return self::EXTENDED_TYPE_MAPS if ActiveSupport::Ractors.main?
+
+          maps = ActiveSupport::Ractors.store_if_absent(:active_record_adapter_extended_type_maps) { {} }
+          maps[self] ||= Concurrent::Map.new
+        end
+
         def extended_type_map(default_timezone:) # :nodoc:
-          Type::TypeMap.new(self::TYPE_MAP).tap do |m|
+          Type::TypeMap.new(type_map).tap do |m|
             register_class_with_precision m, %r(\A[^\(]*time)i, Type::Time, timezone: default_timezone
             register_class_with_precision m, %r(\A[^\(]*datetime)i, Type::DateTime, timezone: default_timezone
             m.alias_type %r(\A[^\(]*timestamp)i, "datetime"
@@ -1336,11 +1352,11 @@ module ActiveRecord
 
         def type_map
           if key = extended_type_map_key
-            self.class::EXTENDED_TYPE_MAPS.compute_if_absent(key) do
+            self.class.extended_type_maps.compute_if_absent(key) do
               self.class.extended_type_map(**key)
             end
           else
-            self.class::TYPE_MAP
+            self.class.type_map
           end
         end
 

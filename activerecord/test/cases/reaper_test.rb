@@ -204,14 +204,14 @@ module ActiveRecord
         pool_config = duplicated_pool_config(reaping_frequency: "0.1")
         pool = ConnectionPool.new(pool_config)
 
-        assert ConnectionPool::Reaper.instance_variable_get(:@pools).any? { |_, refs|
-          refs.any? { |ref| ref.__getobj__ == pool rescue false }
+        assert ConnectionPool::Reaper.state.pools.any? { |_, pools|
+          pools.keys.include?(pool)
         }, "pool should be registered with the reaper"
 
         pool.discard!
 
-        assert ConnectionPool::Reaper.instance_variable_get(:@pools).none? { |_, refs|
-          refs.any? { |ref| ref.__getobj__ == pool rescue false }
+        assert ConnectionPool::Reaper.state.pools.none? { |_, pools|
+          pools.keys.include?(pool)
         }, "pool should be removed from reaper registry after discard!"
       end
 
@@ -219,7 +219,7 @@ module ActiveRecord
         pool_config = duplicated_pool_config(reaping_frequency: "100")
         pool = ConnectionPool.new(pool_config)
 
-        thread = ConnectionPool::Reaper.instance_variable_get(:@threads)[100.0]
+        thread = ConnectionPool::Reaper.state.threads[100.0]
         assert thread&.alive?, "reaper thread should be alive before discard!"
 
         pool.discard!
@@ -232,7 +232,7 @@ module ActiveRecord
         pool1 = ConnectionPool.new(pool_config)
         pool2 = ConnectionPool.new(pool_config)
 
-        thread = ConnectionPool::Reaper.instance_variable_get(:@threads)[100.0]
+        thread = ConnectionPool::Reaper.state.threads[100.0]
         assert thread&.alive?, "reaper thread should be alive"
 
         pool1.discard!

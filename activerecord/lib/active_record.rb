@@ -326,9 +326,20 @@ module ActiveRecord
   singleton_class.attr_accessor :async_query_executor
   self.async_query_executor = nil
 
+  # Non-main Ractors can't share the executor, so each one starts its own.
   def self.global_thread_pool_async_query_executor # :nodoc:
+    if ActiveSupport::Ractors.main?
+      @global_thread_pool_async_query_executor ||= build_global_thread_pool_async_query_executor
+    else
+      ActiveSupport::Ractors.store_if_absent(:active_record_global_async_query_executor) do
+        build_global_thread_pool_async_query_executor
+      end
+    end
+  end
+
+  def self.build_global_thread_pool_async_query_executor # :nodoc:
     concurrency = global_executor_concurrency || 4
-    @global_thread_pool_async_query_executor ||= Concurrent::ThreadPoolExecutor.new(
+    Concurrent::ThreadPoolExecutor.new(
       name: "ActiveRecord-global-async-query-executor",
       min_threads: 0,
       max_threads: concurrency,
@@ -336,6 +347,7 @@ module ActiveRecord
       fallback_policy: :caller_runs
     )
   end
+  private_class_method :build_global_thread_pool_async_query_executor
 
   # Set the +global_executor_concurrency+. This configuration value can only be used
   # with the global thread pool async query executor.
@@ -347,8 +359,10 @@ module ActiveRecord
     @global_executor_concurrency = global_executor_concurrency
   end
 
+  @global_executor_concurrency = nil
+
   def self.global_executor_concurrency # :nodoc:
-    @global_executor_concurrency ||= nil
+    @global_executor_concurrency
   end
 
   @permanent_connection_checkout = true

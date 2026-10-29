@@ -465,7 +465,16 @@ To keep using the current cache store, you can turn off cache versioning entirel
         # Attribute methods are generated lazily under a Monitor, which non-main
         # Ractors can't use, so generate them up front. Models whose table
         # doesn't exist (yet) are skipped.
-        models.reject(&:abstract_class?).select(&:table_exists?).each(&:define_attribute_methods)
+        concrete_models = models.reject(&:abstract_class?).select(&:table_exists?)
+        concrete_models.each(&:define_attribute_methods)
+        # Memoized on first use, which a non-main Ractor can only do by asking the main one.
+        concrete_models.each do |model|
+          model.finder_needs_type_condition?
+          model.with_connection do |connection|
+            model._returning_columns_for_insert(connection)
+            model._returning_columns_for_update(connection)
+          end
+        end
       end
     end
 
